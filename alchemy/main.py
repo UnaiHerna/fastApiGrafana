@@ -59,6 +59,7 @@ def read_datos(db: Session = Depends(get_db)):
             )
             .join(Relacion, Receptor.id == Relacion.id_receptor)
             .join(Elemento, Elemento.id == Relacion.id_elemento)
+            .order_by(Receptor.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
 
