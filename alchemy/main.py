@@ -64,7 +64,7 @@ def read_datos(db: Session = Depends(get_db)):
         resultados = db.execute(query).fetchall()
 
         datos = [
-            {"id": r.id, "nombre": r.nombre, "timestamp": r.timestamp, "simbolo": r.simbolo, "valor": r.valor}
+            {"id": r.id, "nombre": r.nombre, "timestamp": r.timestamp.strftime('%Y-%m-%d %H:%M:%S'), "simbolo": r.simbolo, "valor": r.valor}
             for r in resultados
         ]
         return datos
