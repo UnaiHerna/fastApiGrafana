@@ -64,7 +64,7 @@ def read_datos(db: Session = Depends(get_db)):
         resultados = db.execute(query).fetchall()
 
         datos = [
-            {"id": r.id, "nombre": r.nombre, "timestamp": r.timestamp.strftime('%Y-%m-%d %H:%M:%S'), "simbolo": r.simbolo, "valor": r.valor}
+            {"id": r.id, "nombre": r.nombre, "timestamp": r.timestamp.strftime('%Y-%m-%dT%H:%M:%SZ'), "simbolo": r.simbolo, "valor": r.valor}
             for r in resultados
         ]
         return datos
@@ -124,7 +124,7 @@ def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=f"Error al realizar la consulta: {str(e)}")
 
 
-# Consulta 1: Valores de Oxígeno Disuelto a lo largo del tiempo
+## Consulta 1: Valores de Oxígeno Disuelto a lo largo del tiempo
 @app.get("/datos/oxigeno_disuelto/")
 def read_oxigeno_disuelto(db: Session = Depends(get_db)):
     try:
@@ -140,11 +140,10 @@ def read_oxigeno_disuelto(db: Session = Depends(get_db)):
             .order_by(Receptor.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        datos = [{"time": r.time.strftime('%Y-%m-%dT%H:%M:%SZ'), "value": r.value, "metric": r.metric} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
 
 # Consulta 2: Valores de Amonio a lo largo del tiempo
 @app.get("/datos/amonio/")
@@ -162,11 +161,10 @@ def read_amonio(db: Session = Depends(get_db)):
             .order_by(Receptor.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        datos = [{"time": r.time.strftime('%Y-%m-%dT%H:%M:%SZ'), "value": r.value, "metric": r.metric} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
 
 # Consulta 3: Valores de Nitrato a lo largo del tiempo
 @app.get("/datos/nitrato/")
@@ -184,11 +182,10 @@ def read_nitrato(db: Session = Depends(get_db)):
             .order_by(Receptor.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        datos = [{"time": r.time.strftime('%Y-%m-%dT%H:%M:%SZ'), "value": r.value, "metric": r.metric} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
 
 # Consulta 4: Valores de Sólidos Suspendidos Totales a lo largo del tiempo
 @app.get("/datos/solidos_suspendidos_totales/")
@@ -206,11 +203,10 @@ def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
             .order_by(Receptor.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        datos = [{"time": r.time.strftime('%Y-%m-%dT%H:%M:%SZ'), "value": r.value, "metric": r.metric} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
 
 # Consulta 5: Promedio de Valores por Tipo de Elemento
 @app.get("/datos/promedio_valores/")
@@ -230,7 +226,6 @@ def read_promedio_valores(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
 
 # Consulta 6: Últimos Valores Registrados por Tipo de Elemento
 @app.get("/datos/ultimos_valores/")
@@ -257,8 +252,7 @@ def read_ultimos_valores(db: Session = Depends(get_db)):
             .order_by(Elemento.descripcion.asc())
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "latest_value": r.latest_value, "time": r.time.isoformat(' ')} for r in
-                 resultados]
+        datos = [{"metric": r.metric, "latest_value": r.latest_value, "time": r.time.strftime('%Y-%m-%dT%H:%M:%SZ')} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
