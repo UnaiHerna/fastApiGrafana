@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from alchemy.connector import get_db
 from alchemy.models import *
 
@@ -122,3 +122,143 @@ def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al realizar la consulta: {str(e)}")
+
+
+# Consulta 1: Valores de Oxígeno Disuelto a lo largo del tiempo
+@app.get("/datos/oxigeno_disuelto/")
+def read_oxigeno_disuelto(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Receptor.timestamp.label('time'),
+                Receptor.valor.label('value'),
+                Elemento.descripcion.label('metric')
+            )
+            .join(Relacion, Receptor.id == Relacion.id_receptor)
+            .join(Elemento, Elemento.id == Relacion.id_elemento)
+            .where(Elemento.descripcion == 'Oxígeno Disuelto')
+            .order_by(Receptor.timestamp.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+# Consulta 2: Valores de Amonio a lo largo del tiempo
+@app.get("/datos/amonio/")
+def read_amonio(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Receptor.timestamp.label('time'),
+                Receptor.valor.label('value'),
+                Elemento.descripcion.label('metric')
+            )
+            .join(Relacion, Receptor.id == Relacion.id_receptor)
+            .join(Elemento, Elemento.id == Relacion.id_elemento)
+            .where(Elemento.descripcion == 'Amonio')
+            .order_by(Receptor.timestamp.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+# Consulta 3: Valores de Nitrato a lo largo del tiempo
+@app.get("/datos/nitrato/")
+def read_nitrato(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Receptor.timestamp.label('time'),
+                Receptor.valor.label('value'),
+                Elemento.descripcion.label('metric')
+            )
+            .join(Relacion, Receptor.id == Relacion.id_receptor)
+            .join(Elemento, Elemento.id == Relacion.id_elemento)
+            .where(Elemento.descripcion == 'Nitrato')
+            .order_by(Receptor.timestamp.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+# Consulta 4: Valores de Sólidos Suspendidos Totales a lo largo del tiempo
+@app.get("/datos/solidos_suspendidos_totales/")
+def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Receptor.timestamp.label('time'),
+                Receptor.valor.label('value'),
+                Elemento.descripcion.label('metric')
+            )
+            .join(Relacion, Receptor.id == Relacion.id_receptor)
+            .join(Elemento, Elemento.id == Relacion.id_elemento)
+            .where(Elemento.descripcion == 'Sólidos Suspendidos Totales')
+            .order_by(Receptor.timestamp.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"time": r.time.isoformat(' '), "value": r.value, "metric": r.metric} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+# Consulta 5: Promedio de Valores por Tipo de Elemento
+@app.get("/datos/promedio_valores/")
+def read_promedio_valores(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Elemento.descripcion.label('metric'),
+                func.avg(Receptor.valor).label('average_value')
+            )
+            .join(Relacion, Receptor.id == Relacion.id_receptor)
+            .join(Elemento, Elemento.id == Relacion.id_elemento)
+            .group_by(Elemento.descripcion)
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"metric": r.metric, "average_value": r.average_value} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+# Consulta 6: Últimos Valores Registrados por Tipo de Elemento
+@app.get("/datos/ultimos_valores/")
+def read_ultimos_valores(db: Session = Depends(get_db)):
+    try:
+        subquery = (
+            select(
+                Receptor.id,
+                func.max(Receptor.timestamp).label('latest_timestamp')
+            )
+            .group_by(Receptor.id)
+            .subquery()
+        )
+
+        query = (
+            select(
+                Elemento.descripcion.label('metric'),
+                Receptor.valor.label('latest_value'),
+                Receptor.timestamp.label('time')
+            )
+            .join(Relacion, Receptor.id == Relacion.id_receptor)
+            .join(Elemento, Elemento.id == Relacion.id_elemento)
+            .join(subquery, (Receptor.id == subquery.c.id) & (Receptor.timestamp == subquery.c.latest_timestamp))
+            .order_by(Elemento.descripcion.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"metric": r.metric, "latest_value": r.latest_value, "time": r.time.isoformat(' ')} for r in
+                 resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
