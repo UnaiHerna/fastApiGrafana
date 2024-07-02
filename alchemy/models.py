@@ -14,6 +14,7 @@ class Receptor(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     timestamp = Column(DateTime)
     valor = Column(Float)
+    nombre = Column(String(50))
 
 class Relacion(Base):
     __tablename__ = 'relacion'
