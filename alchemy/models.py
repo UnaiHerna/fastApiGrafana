@@ -1,22 +1,33 @@
 # models.py
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from alchemy.connector import Base
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Table
-from sqlalchemy.ext.declarative import declarative_base
-class Elemento(Base):
-    __tablename__ = 'elemento'
+
+
+class Variable(Base):
+    __tablename__ = 'variable'
     id = Column(Integer, primary_key=True, nullable=False)
     simbolo = Column(String(10))
     u_medida = Column(String(10))
     descripcion = Column(String(50))
 
-class Receptor(Base):
-    __tablename__ = 'receptor'
+
+class Equipo(Base):
+    __tablename__ = 'equipo'
     id = Column(Integer, primary_key=True, nullable=False)
-    timestamp = Column(DateTime)
-    valor = Column(Float)
     nombre = Column(String(50))
+    descripcion = Column(String(50))
+
 
 class Relacion(Base):
     __tablename__ = 'relacion'
-    id_receptor = Column(Integer, ForeignKey('receptor.id'), primary_key=True, nullable=False)
-    id_elemento = Column(Integer, ForeignKey('elemento.id'), primary_key=True, nullable=False)
+    id_equipo = Column(Integer, ForeignKey('equipo.id'), primary_key=True, nullable=False)
+    id_variable = Column(Integer, ForeignKey('variable.id'), primary_key=True, nullable=False)
+
+
+class Dato(Base):
+    __tablename__ = 'datos'
+    id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    id_equipo = Column(Integer, ForeignKey('relacion.id_equipo'), nullable=False)
+    id_variable = Column(Integer, ForeignKey('relacion.id_variable'), nullable=False)
+    timestamp = Column(DateTime)
+    valor = Column(Float)
