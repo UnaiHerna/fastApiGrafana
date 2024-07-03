@@ -24,7 +24,7 @@ class Relacion(Base):
     id_variable = Column(Integer, ForeignKey('variable.id'), primary_key=True, nullable=False)
 
 
-class Dato(Base):
+class Datos(Base):
     __tablename__ = 'datos'
     id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
     id_equipo = Column(Integer, ForeignKey('relacion.id_equipo'), nullable=False)

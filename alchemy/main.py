@@ -35,16 +35,16 @@ def read_datos(db: Session = Depends(get_db)):
     try:
         query = (
             select(
-                Dato.id,
+                Datos.id,
                 Equipo.nombre.label('equipo_nombre'),
                 Variable.descripcion.label('variable_descripcion'),
-                Dato.timestamp,
-                Dato.valor
+                Datos.timestamp,
+                Datos.valor
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Equipo, Relacion.id_equipo == Equipo.id)
             .join(Variable, Relacion.id_variable == Variable.id)
-            .order_by(Dato.timestamp.asc())
+            .order_by(Datos.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
 
@@ -63,13 +63,13 @@ def read_oxigeno_disuelto(db: Session = Depends(get_db)):
     try:
         query = (
             select(
-                Dato.timestamp.label('time'),
-                Dato.valor.label('value')
+                Datos.timestamp.label('time'),
+                Datos.valor.label('value')
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .where(Variable.descripcion == 'Oxígeno Disuelto')
-            .order_by(Dato.timestamp.asc())
+            .order_by(Datos.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
         datos = [{"time": r.time, "value": r.value} for r in resultados]
@@ -83,13 +83,13 @@ def read_amonio(db: Session = Depends(get_db)):
     try:
         query = (
             select(
-                Dato.timestamp.label('time'),
-                Dato.valor.label('value')
+                Datos.timestamp.label('time'),
+                Datos.valor.label('value')
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .where(Variable.descripcion == 'Amonio')
-            .order_by(Dato.timestamp.asc())
+            .order_by(Datos.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
         datos = [{"time": r.time, "value": r.value} for r in resultados]
@@ -103,13 +103,13 @@ def read_nitrato(db: Session = Depends(get_db)):
     try:
         query = (
             select(
-                Dato.timestamp.label('time'),
-                Dato.valor.label('value')
+                Datos.timestamp.label('time'),
+                Datos.valor.label('value')
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .where(Variable.descripcion == 'Nitrato')
-            .order_by(Dato.timestamp.asc())
+            .order_by(Datos.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
         datos = [{"time": r.time, "value": r.value} for r in resultados]
@@ -123,13 +123,13 @@ def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
     try:
         query = (
             select(
-                Dato.timestamp.label('time'),
-                Dato.valor.label('value')
+                Datos.timestamp.label('time'),
+                Datos.valor.label('value')
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .where(Variable.descripcion == 'Sólidos Suspendidos Totales')
-            .order_by(Dato.timestamp.asc())
+            .order_by(Datos.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
         datos = [{"time": r.time, "value": r.value} for r in resultados]
@@ -138,15 +138,46 @@ def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
 
 
+@app.get("/datos/solidos_suspendidos_totales_maxmin/")
+def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
+    try:
+        subquery = (
+            select(
+                Datos.valor.label('valor'),
+                Datos.timestamp.label('timestamp')
+            )
+            .subquery()
+        )
+        query = (
+            select(
+                Datos.timestamp,
+                subquery.c.valor,
+                func.min(Datos.valor).label('min_valor'),
+                func.max(Datos.valor).label('max_valor')
+            )
+            .join(subquery, subquery.c.timestamp == Datos.timestamp)
+            .group_by(Datos.timestamp, subquery.c.valor)
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [
+            {"timestamp": r.timestamp, "valor": r.valor, "min_valor": r.min_valor, "max_valor": r.max_valor}
+            for r in resultados
+        ]
+        return datos
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la consulta: {str(e)}")
+
+
 @app.get("/datos/promedio_valores/")
 def read_promedio_valores(db: Session = Depends(get_db)):
     try:
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                func.avg(Dato.valor).label('average_value')
+                func.avg(Datos.valor).label('average_value')
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .group_by(Variable.descripcion)
         )
@@ -162,22 +193,22 @@ def read_ultimos_valores(db: Session = Depends(get_db)):
     try:
         subquery = (
             select(
-                Dato.id,
-                func.max(Dato.timestamp).label('latest_timestamp')
+                Datos.id,
+                func.max(Datos.timestamp).label('latest_timestamp')
             )
-            .group_by(Dato.id)
+            .group_by(Datos.id)
             .subquery()
         )
 
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                Dato.valor.label('latest_value'),
-                Dato.timestamp.label('time')
+                Datos.valor.label('latest_value'),
+                Datos.timestamp.label('time')
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
-            .join(subquery, (Dato.id == subquery.c.id) & (Dato.timestamp == subquery.c.latest_timestamp))
+            .join(subquery, (Datos.id == subquery.c.id) & (Datos.timestamp == subquery.c.latest_timestamp))
             .order_by(Variable.descripcion.asc())
         )
         resultados = db.execute(query).fetchall()
@@ -214,14 +245,14 @@ def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db
         # Aquí debes construir la consulta según los parámetros recibidos
         query = (
             select(
-                Dato.timestamp,
-                Dato.valor
+                Datos.timestamp,
+                Datos.valor
             )
-            .join(Relacion, (Dato.id_equipo == Relacion.id_equipo) & (Dato.id_variable == Relacion.id_variable))
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .filter(Variable.simbolo == metric)
-            .filter(Dato.timestamp >= desde)
-            .filter(Dato.timestamp <= hasta)
+            .filter(Datos.timestamp >= desde)
+            .filter(Datos.timestamp <= hasta)
         )
         resultados = db.execute(query).fetchall()
 
