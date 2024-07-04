@@ -117,7 +117,7 @@ def read_nitrato(db: Session = Depends(get_db)):
 def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
     return read_datos_by_variable(db, 'Sólidos Suspendidos Totales')
 
-
+'''
 @app.get("/datos/solidos_suspendidos_totales_maxmin/")
 def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
     try:
@@ -147,8 +147,8 @@ def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la consulta: {str(e)}")
-
-
+'''
+'''
 @app.get("/datos/promedio_valores/")
 def read_promedio_valores(db: Session = Depends(get_db)):
     try:
@@ -166,7 +166,7 @@ def read_promedio_valores(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
+'''
 '''
 @app.get("/datos/ultimos_valores/")
 def read_ultimos_valores(db: Session = Depends(get_db)):
