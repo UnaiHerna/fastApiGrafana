@@ -3,13 +3,52 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from alchemy.connector import get_db
 from alchemy.models import *
+from alchemy.redis_client import RedisClient, json_deserializer, json_serializer
+import json
 
 app = FastAPI()
+
+# Inicializa el cliente de Redis
+redis_client = RedisClient().get_client()
 
 
 @app.get("/")
 def read_root():
     return {"HolaMundo": "Bienvenido a mi API"}
+
+
+def get_cached_response(key):
+    cached_data = redis_client.get(key)
+    if cached_data:
+        return json.loads(cached_data, object_hook=json_deserializer)
+    return None
+
+
+def set_cached_response(key, data, expiration=60):
+    redis_client.setex(key, expiration, json.dumps(data, default=json_serializer))
+
+
+def read_datos_by_variable(db, variable_desc):
+    cache_key = f"datos_{variable_desc}"
+    cached_data = get_cached_response(cache_key)
+    if cached_data:
+        return cached_data
+
+    query = (
+        select(
+            Datos.timestamp.label('time'),
+            Datos.valor.label('value')
+        )
+        .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
+        .join(Variable, Relacion.id_variable == Variable.id)
+        .where(Variable.descripcion == variable_desc)
+        .order_by(Datos.timestamp.asc())
+    )
+    resultados = db.execute(query).fetchall()
+    datos = [{"time": r.time, "value": r.value} for r in resultados]
+
+    set_cached_response(cache_key, datos)
+    return datos
 
 
 @app.get("/variables/")
@@ -60,82 +99,22 @@ def read_datos(db: Session = Depends(get_db)):
 
 @app.get("/datos/oxigeno_disuelto/")
 def read_oxigeno_disuelto(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Datos.timestamp.label('time'),
-                Datos.valor.label('value')
-            )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .where(Variable.descripcion == 'Oxígeno Disuelto')
-            .order_by(Datos.timestamp.asc())
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time, "value": r.value} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+    return read_datos_by_variable(db, 'Oxígeno Disuelto')
 
 
 @app.get("/datos/amonio/")
 def read_amonio(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Datos.timestamp.label('time'),
-                Datos.valor.label('value')
-            )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .where(Variable.descripcion == 'Amonio')
-            .order_by(Datos.timestamp.asc())
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time, "value": r.value} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+    return read_datos_by_variable(db, 'Amonio')
 
 
 @app.get("/datos/nitrato/")
 def read_nitrato(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Datos.timestamp.label('time'),
-                Datos.valor.label('value')
-            )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .where(Variable.descripcion == 'Nitrato')
-            .order_by(Datos.timestamp.asc())
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time, "value": r.value} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+    return read_datos_by_variable(db, 'Nitrato')
 
 
 @app.get("/datos/solidos_suspendidos_totales/")
 def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Datos.timestamp.label('time'),
-                Datos.valor.label('value')
-            )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .where(Variable.descripcion == 'Sólidos Suspendidos Totales')
-            .order_by(Datos.timestamp.asc())
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time, "value": r.value} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+    return read_datos_by_variable(db, 'Sólidos Suspendidos Totales')
 
 
 @app.get("/datos/solidos_suspendidos_totales_maxmin/")
@@ -266,4 +245,5 @@ def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db
 
         return response
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al realizar la consulta: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error al ejecutar la consulta: {str(e)}")
+
