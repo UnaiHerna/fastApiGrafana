@@ -56,13 +56,13 @@ def read_datos_by_variable(db, variable_desc):
 
 
 @app.get("/variables/")
-def read_elementos(db: Session = Depends(get_db)):
+def read_variables(db: Session = Depends(get_db)):
     variables = db.execute(select(Variable)).scalars().all()
     return variables
 
 
 @app.get("/equipos/")
-def read_receptores(db: Session = Depends(get_db)):
+def read_equipos(db: Session = Depends(get_db)):
     equipos = db.execute(select(Equipo)).scalars().all()
     return equipos
 
@@ -74,7 +74,7 @@ def read_relaciones(db: Session = Depends(get_db)):
 
 
 @app.get("/datos/")
-def read_datos_WIP(db: Session = Depends(get_db)):
+def read_datos_wip(db: Session = Depends(get_db)):
     try:
         query = (
             select(
@@ -101,7 +101,6 @@ def read_datos_WIP(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
 
 
-
 @app.get("/datos/oxigeno_disuelto/")
 def read_oxigeno_disuelto(db: Session = Depends(get_db)):
     return read_datos_by_variable(db, 'Oxígeno Disuelto')
@@ -115,6 +114,21 @@ def read_amonio(db: Session = Depends(get_db)):
 @app.get("/datos/nitrato/")
 def read_nitrato(db: Session = Depends(get_db)):
     return read_datos_by_variable(db, 'Nitrato')
+
+
+@app.get("/datos/temperatura/")
+def read_temperatura(db: Session = Depends(get_db)):
+    return read_datos_by_variable(db, 'Temperatura')
+
+
+@app.get("/datos/caudal_aire/")
+def read_caudal_aire(db: Session = Depends(get_db)):
+    return read_datos_by_variable(db, 'Caudal de aire')
+
+
+@app.get("/datos/caudal_agua/")
+def read_caudal_agua(db: Session = Depends(get_db)):
+    return read_datos_by_variable(db, 'Caudal de agua')
 
 
 @app.get("/datos/solidos_suspendidos_totales/")
@@ -178,7 +192,7 @@ def read_promedio_valores(db: Session = Depends(get_db)):
 
 
 @app.get("/datos/ultimos_valores/")
-def read_ultimos_valores_WIP(db: Session = Depends(get_db)):
+def read_ultimos_valores_wip(db: Session = Depends(get_db)):
     try:
         subquery = (
             select(
@@ -205,6 +219,7 @@ def read_ultimos_valores_WIP(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
 
 @app.get("/metrics")
 def get_metrics_metadata(db: Session = Depends(get_db)):
@@ -238,7 +253,7 @@ def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db
             )
             .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
-            .filter(Variable.simbolo == metric)
+            .filter(Variable.simbolo.__eq__(metric))
             .filter(Datos.timestamp >= desde)
             .filter(Datos.timestamp <= hasta)
         )
@@ -255,4 +270,3 @@ def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al ejecutar la consulta: {str(e)}")
-
