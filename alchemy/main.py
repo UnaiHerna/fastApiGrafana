@@ -117,27 +117,32 @@ def read_nitrato(db: Session = Depends(get_db)):
 def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
     return read_datos_by_variable(db, 'Sólidos Suspendidos Totales')
 
-'''
+
 @app.get("/datos/solidos_suspendidos_totales_maxmin/")
 def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
     try:
-        subquery = (
-            select(
-                Datos.valor.label('valor'),
-                Datos.timestamp.label('timestamp')
-            )
-            .subquery()
-        )
-        query = (
+        # Subconsulta para obtener min y max valores por timestamp
+        min_max_subquery = (
             select(
                 Datos.timestamp,
-                subquery.c.valor,
                 func.min(Datos.valor).label('min_valor'),
                 func.max(Datos.valor).label('max_valor')
             )
-            .join(subquery, subquery.c.timestamp == Datos.timestamp)
-            .group_by(Datos.timestamp, subquery.c.valor)
+            .group_by(Datos.timestamp)
+            .subquery()
         )
+
+        # Consulta principal uniendo con la subconsulta para obtener los valores originales
+        query = (
+            select(
+                Datos.timestamp,
+                Datos.valor,
+                min_max_subquery.c.min_valor,
+                min_max_subquery.c.max_valor
+            )
+            .join(min_max_subquery, min_max_subquery.c.timestamp == Datos.timestamp)
+        )
+
         resultados = db.execute(query).fetchall()
         datos = [
             {"timestamp": r.timestamp, "valor": r.valor, "min_valor": r.min_valor, "max_valor": r.max_valor}
@@ -147,7 +152,7 @@ def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la consulta: {str(e)}")
-'''
+
 '''
 @app.get("/datos/promedio_valores/")
 def read_promedio_valores(db: Session = Depends(get_db)):
