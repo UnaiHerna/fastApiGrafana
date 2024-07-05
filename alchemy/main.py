@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func
 from alchemy.connector import get_db
 from alchemy.models import *
 from alchemy.redis_client import RedisClient, json_deserializer, json_serializer
@@ -40,25 +40,17 @@ def read_datos_by_variable(db, variable_desc):
         select(
             Datos.timestamp.label('time'),
             Datos.valor.label('value'),
-            Equipo.descripcion.label('equipo'),
         )
-        .join(Relacion, and_(
-            Datos.id_equipo == Relacion.id_equipo,
-            Datos.id_variable == Relacion.id_variable
-        ))
+        .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
         .join(Variable, Relacion.id_variable == Variable.id)
-        .join(Equipo, Datos.id_equipo == Equipo.id)
         .where(Variable.descripcion == variable_desc)
         .order_by(Datos.timestamp.asc())
     )
-
     resultados = db.execute(query).fetchall()
-
-    datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
+    datos = [{"time": r.time, "value": r.value} for r in resultados]
 
     set_cached_response(cache_key, datos)
     return datos
-
 
 
 @app.get("/variables/")
