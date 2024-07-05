@@ -39,7 +39,8 @@ def read_datos_by_variable(db, variable_desc):
     query = (
         select(
             Datos.timestamp.label('time'),
-            Datos.valor.label('value')
+            Datos.valor.label('value'),
+            Equipo.descripcion.label('equipo'),
         )
         .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
         .join(Variable, Relacion.id_variable == Variable.id)
@@ -47,7 +48,7 @@ def read_datos_by_variable(db, variable_desc):
         .order_by(Datos.timestamp.asc())
     )
     resultados = db.execute(query).fetchall()
-    datos = [{"time": r.time, "value": r.value} for r in resultados]
+    datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
 
     set_cached_response(cache_key, datos)
     return datos
@@ -157,7 +158,7 @@ def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
 
 
 @app.get("/datos/promedio_valores/")
-def read_promedio_valores_WIP(db: Session = Depends(get_db)):
+def read_promedio_valores(db: Session = Depends(get_db)):
     try:
         query = (
             select(
