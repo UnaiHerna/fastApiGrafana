@@ -68,9 +68,9 @@ def read_relaciones(db: Session = Depends(get_db)):
     relaciones = db.execute(select(Relacion)).scalars().all()
     return relaciones
 
-'''
+
 @app.get("/datos/")
-def read_datos(db: Session = Depends(get_db)):
+def read_datos_WIP(db: Session = Depends(get_db)):
     try:
         query = (
             select(
@@ -95,7 +95,7 @@ def read_datos(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-'''
+
 
 
 @app.get("/datos/oxigeno_disuelto/")
@@ -153,9 +153,9 @@ def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la consulta: {str(e)}")
 
-'''
+
 @app.get("/datos/promedio_valores/")
-def read_promedio_valores(db: Session = Depends(get_db)):
+def read_promedio_valores_WIP(db: Session = Depends(get_db)):
     try:
         query = (
             select(
@@ -171,10 +171,10 @@ def read_promedio_valores(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-'''
-'''
+
+
 @app.get("/datos/ultimos_valores/")
-def read_ultimos_valores(db: Session = Depends(get_db)):
+def read_ultimos_valores_WIP(db: Session = Depends(get_db)):
     try:
         subquery = (
             select(
@@ -201,7 +201,6 @@ def read_ultimos_valores(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-'''
 
 @app.get("/metrics")
 def get_metrics_metadata(db: Session = Depends(get_db)):
