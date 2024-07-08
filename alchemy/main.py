@@ -178,17 +178,43 @@ def read_promedio_valores(db: Session = Depends(get_db)):
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                func.avg(Datos.valor).label('average_value')
+                func.avg(Datos.valor).label('average_value'),
+                Equipo.nombre.label('equipo')
             )
             .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
-            .group_by(Variable.descripcion)
+            .join(Equipo, Relacion.id_equipo == Equipo.id)
+            .where(~Variable.descripcion.in_(['caudal de aire', 'caudal de agua', 'temperatura']))
+            .group_by(Variable.descripcion, Equipo.nombre)
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "average_value": r.average_value} for r in resultados]
+        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+@app.get("/datos/promedio_valores_grandes/")
+def read_promedio_valores_grandes(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Variable.descripcion.label('metric'),
+                func.avg(Datos.valor).label('average_value'),
+                Equipo.nombre.label('equipo')
+            )
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
+            .join(Variable, Relacion.id_variable == Variable.id)
+            .join(Equipo, Relacion.id_equipo == Equipo.id)
+            .where(Variable.descripcion.in_(['Caudal de aire', 'Caudal de agua', 'Temperatura']))
+            .group_by(Variable.descripcion, Equipo.nombre)
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
 
 
 @app.get("/datos/ultimos_valores/")
