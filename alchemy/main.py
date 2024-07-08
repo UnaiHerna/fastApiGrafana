@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select, func, literal
 from alchemy.connector import get_db
 from alchemy.models import *
 from alchemy.redis_client import RedisClient, json_deserializer, json_serializer
@@ -179,13 +179,13 @@ def read_promedio_valores(db: Session = Depends(get_db)):
             select(
                 Variable.descripcion.label('metric'),
                 func.avg(Datos.valor).label('average_value'),
-                Equipo.nombre.label('equipo')
+                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
             )
             .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .join(Equipo, Relacion.id_equipo == Equipo.id)
             .where(~Variable.descripcion.in_(['caudal de aire', 'caudal de agua', 'temperatura']))
-            .group_by(Variable.descripcion, Equipo.nombre)
+            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
         )
         resultados = db.execute(query).fetchall()
         datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
@@ -201,13 +201,13 @@ def read_promedio_valores_grandes(db: Session = Depends(get_db)):
             select(
                 Variable.descripcion.label('metric'),
                 func.avg(Datos.valor).label('average_value'),
-                Equipo.nombre.label('equipo')
+                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
             )
             .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
             .join(Equipo, Relacion.id_equipo == Equipo.id)
             .where(Variable.descripcion.in_(['Caudal de aire', 'Caudal de agua', 'Temperatura']))
-            .group_by(Variable.descripcion, Equipo.nombre)
+            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
         )
         resultados = db.execute(query).fetchall()
         datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
