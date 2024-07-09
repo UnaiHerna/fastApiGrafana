@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, literal
+from sqlalchemy import select, func, literal, extract
 from alchemy.connector import get_db
 from alchemy.models import *
 from alchemy.redis_client import RedisClient, json_deserializer, json_serializer
@@ -57,7 +57,8 @@ def read_datos_by_variable(db, variable_desc):
 
 @app.get("/variables/")
 def read_variables(db: Session = Depends(get_db)):
-    variables = db.execute(select(Variable)).scalars().all()
+    query = select(Variable).order_by(Variable.id)
+    variables = db.execute(query).scalars().all()
     return variables
 
 
@@ -72,7 +73,7 @@ def read_relaciones(db: Session = Depends(get_db)):
     relaciones = db.execute(select(Relacion)).scalars().all()
     return relaciones
 
-
+'''
 @app.get("/datos/")
 def read_datos_wip(db: Session = Depends(get_db)):
     try:
@@ -99,7 +100,7 @@ def read_datos_wip(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
+'''
 
 @app.get("/datos/oxigeno_disuelto/")
 def read_oxigeno_disuelto(db: Session = Depends(get_db)):
@@ -194,14 +195,39 @@ def read_promedio_valores(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
 
 
-@app.get("/datos/promedio_valores_grandes/")
+@app.get("/datos/promedio_valores_mes/")
+def read_promedio_valores_mes(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Variable.descripcion.label('metric'),
+                func.avg(Datos.valor).label('average_value'),
+                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo'),
+                extract('year', Datos.timestamp).label('year'),
+                extract('month', Datos.timestamp).label('month')
+            )
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
+            .join(Variable, Relacion.id_variable == Variable.id)
+            .join(Equipo, Relacion.id_equipo == Equipo.id)
+            .where(~Variable.descripcion.in_(['caudal de aire', 'caudal de agua', 'temperatura']))
+            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion, 'year', 'month')
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+@app.get("/datos/promedio_valores_grandes_mes/")
 def read_promedio_valores_grandes(db: Session = Depends(get_db)):
     try:
         query = (
             select(
                 Variable.descripcion.label('metric'),
                 func.avg(Datos.valor).label('average_value'),
-                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
+                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo'),
+                extract('year', Datos.timestamp).label('year'),
+                extract('month', Datos.timestamp).label('month')
             )
             .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
             .join(Variable, Relacion.id_variable == Variable.id)
@@ -210,7 +236,9 @@ def read_promedio_valores_grandes(db: Session = Depends(get_db)):
             .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
+        datos = [
+            {"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month}
+            for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
