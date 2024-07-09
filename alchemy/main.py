@@ -218,6 +218,29 @@ def read_promedio_valores_mes(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
 
+
+@app.get("/datos/promedio_valores_grandes/")
+def read_promedio_valores_grandes(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Variable.descripcion.label('metric'),
+                func.avg(Datos.valor).label('average_value'),
+                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
+            )
+            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
+            .join(Variable, Relacion.id_variable == Variable.id)
+            .join(Equipo, Relacion.id_equipo == Equipo.id)
+            .where(Variable.descripcion.in_(['Caudal de aire', 'Caudal de agua', 'Temperatura']))
+            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
 @app.get("/datos/promedio_valores_grandes_mes/")
 def read_promedio_valores_grandes(db: Session = Depends(get_db)):
     try:
@@ -233,16 +256,13 @@ def read_promedio_valores_grandes(db: Session = Depends(get_db)):
             .join(Variable, Relacion.id_variable == Variable.id)
             .join(Equipo, Relacion.id_equipo == Equipo.id)
             .where(Variable.descripcion.in_(['Caudal de aire', 'Caudal de agua', 'Temperatura']))
-            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
+            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion, 'year', 'month')
         )
         resultados = db.execute(query).fetchall()
-        datos = [
-            {"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month}
-            for r in resultados]
+        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
 
 
 @app.get("/datos/ultimos_valores/")
