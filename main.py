@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, literal, extract
-from alchemy.connector import get_db
-from alchemy.models import *
-from alchemy.redis_client import RedisClient, json_deserializer, json_serializer
+from connector import get_db
+from models import *
+from redis_client import RedisClient, json_deserializer, json_serializer
 import json
 
 app = FastAPI()

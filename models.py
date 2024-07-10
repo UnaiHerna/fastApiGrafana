@@ -1,6 +1,6 @@
 # models.py
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
-from alchemy.connector import Base
+from connector import Base
 
 
 class Variable(Base):
