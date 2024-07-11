@@ -38,15 +38,15 @@ def read_datos_by_variable(db, variable_desc):
 
     query = (
         select(
-            Datos.timestamp.label('time'),
-            Datos.valor.label('value'),
+            SensorDatos.timestamp.label('time'),
+            SensorDatos.valor.label('value'),
             Equipo.descripcion.label('equipo')
         )
-        .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-        .join(Variable, Relacion.id_variable == Variable.id)
-        .join(Equipo, Relacion.id_equipo == Equipo.id)
+        .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+        .join(Variable, Sensor.id_variable == Variable.id)
+        .join(Equipo, Sensor.id_equipo == Equipo.id)
         .where(Variable.descripcion == variable_desc)
-        .order_by(Datos.timestamp.asc())
+        .order_by(SensorDatos.timestamp.asc())
     )
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
@@ -70,7 +70,7 @@ def read_equipos(db: Session = Depends(get_db)):
 
 @app.get("/relaciones/")
 def read_relaciones(db: Session = Depends(get_db)):
-    relaciones = db.execute(select(Relacion)).scalars().all()
+    relaciones = db.execute(select(Sensor)).scalars().all()
     return relaciones
 
 '''
@@ -143,23 +143,23 @@ def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
         # Subconsulta para obtener min y max valores por timestamp
         min_max_subquery = (
             select(
-                Datos.timestamp,
-                func.min(Datos.valor).label('min_valor'),
-                func.max(Datos.valor).label('max_valor')
+                SensorDatos.timestamp,
+                func.min(SensorDatos.valor).label('min_valor'),
+                func.max(SensorDatos.valor).label('max_valor')
             )
-            .group_by(Datos.timestamp)
+            .group_by(SensorDatos.timestamp)
             .subquery()
         )
 
         # Consulta principal uniendo con la subconsulta para obtener los valores originales
         query = (
             select(
-                Datos.timestamp,
-                Datos.valor,
+                SensorDatos.timestamp,
+                SensorDatos.valor,
                 min_max_subquery.c.min_valor,
                 min_max_subquery.c.max_valor
             )
-            .join(min_max_subquery, min_max_subquery.c.timestamp == Datos.timestamp)
+            .join(min_max_subquery, min_max_subquery.c.timestamp == SensorDatos.timestamp)
         )
 
         resultados = db.execute(query).fetchall()
@@ -179,13 +179,13 @@ def read_promedio_valores(db: Session = Depends(get_db)):
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                func.avg(Datos.valor).label('average_value'),
+                func.avg(SensorDatos.valor).label('average_value'),
                 func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
             )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .join(Equipo, Relacion.id_equipo == Equipo.id)
-            .where(~Variable.descripcion.in_(['caudal de aire', 'caudal de agua', 'temperatura']))
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(Equipo, Sensor.id_equipo == Equipo.id)
+            .where(Variable.descripcion.in_(['Amonio', 'Nitrato', 'Oxígeno Disuelto', 'Sólidos Suspendidos Totales']))
             .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
         )
         resultados = db.execute(query).fetchall()
@@ -201,15 +201,15 @@ def read_promedio_valores_mes(db: Session = Depends(get_db)):
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                func.avg(Datos.valor).label('average_value'),
+                func.avg(SensorDatos.valor).label('average_value'),
                 func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo'),
-                extract('year', Datos.timestamp).label('year'),
-                extract('month', Datos.timestamp).label('month')
+                extract('year', SensorDatos.timestamp).label('year'),
+                extract('month', SensorDatos.timestamp).label('month')
             )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .join(Equipo, Relacion.id_equipo == Equipo.id)
-            .where(~Variable.descripcion.in_(['caudal de aire', 'caudal de agua', 'temperatura']))
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(Equipo, Sensor.id_equipo == Equipo.id)
+            .where(Variable.descripcion.in_(['Amonio', 'Nitrato', 'Oxígeno Disuelto', 'Sólidos Suspendidos Totales']))
             .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion, 'year', 'month')
         )
         resultados = db.execute(query).fetchall()
@@ -225,12 +225,12 @@ def read_promedio_valores_grandes(db: Session = Depends(get_db)):
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                func.avg(Datos.valor).label('average_value'),
+                func.avg(SensorDatos.valor).label('average_value'),
                 func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
             )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .join(Equipo, Relacion.id_equipo == Equipo.id)
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(Equipo, Sensor.id_equipo == Equipo.id)
             .where(Variable.descripcion.in_(['Caudal de aire', 'Caudal de agua', 'Temperatura']))
             .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
         )
@@ -247,14 +247,14 @@ def read_promedio_valores_grandes(db: Session = Depends(get_db)):
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                func.avg(Datos.valor).label('average_value'),
+                func.avg(SensorDatos.valor).label('average_value'),
                 func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo'),
-                extract('year', Datos.timestamp).label('year'),
-                extract('month', Datos.timestamp).label('month')
+                extract('year', SensorDatos.timestamp).label('year'),
+                extract('month', SensorDatos.timestamp).label('month')
             )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .join(Equipo, Relacion.id_equipo == Equipo.id)
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(Equipo, Sensor.id_equipo == Equipo.id)
             .where(Variable.descripcion.in_(['Caudal de aire', 'Caudal de agua', 'Temperatura']))
             .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion, 'year', 'month')
         )
@@ -270,26 +270,65 @@ def read_ultimos_valores_wip(db: Session = Depends(get_db)):
     try:
         subquery = (
             select(
-                Datos.id,
-                func.max(Datos.timestamp).label('latest_timestamp')
+                SensorDatos.id,
+                func.max(SensorDatos.timestamp).label('latest_timestamp')
             )
-            .group_by(Datos.id)
+            .group_by(SensorDatos.id)
             .subquery()
         )
 
         query = (
             select(
                 Variable.descripcion.label('metric'),
-                Datos.valor.label('latest_value'),
-                Datos.timestamp.label('time')
+                SensorDatos.valor.label('latest_value'),
+                SensorDatos.timestamp.label('time')
             )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .join(subquery, (Datos.id == subquery.c.id) & (Datos.timestamp == subquery.c.latest_timestamp))
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(subquery, (SensorDatos.id == subquery.c.id) & (SensorDatos.timestamp == subquery.c.latest_timestamp))
             .order_by(Variable.descripcion.asc())
         )
         resultados = db.execute(query).fetchall()
         datos = [{"metric": r.metric, "latest_value": r.latest_value, "time": r.time} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+@app.get("/datos/valores_consigna/")
+def read_valores_consigna(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                Consigna.nombre.label('consigna'),
+                ValoresConsigna.valor.label('valor'),
+                ValoresConsigna.timestamp.label('time'),
+                ValoresConsigna.mode.label('mode')
+            )
+            .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
+            .order_by(ValoresConsigna.timestamp.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"consigna": r.consigna, "valor": r.valor, "time": r.time, "mode": r.mode} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+@app.get("/datos/datos_filtrados/")
+def read_datos_filtrados(db: Session = Depends(get_db)):
+    try:
+        query=(
+            select(
+                Senal.nombre.label('senal'),
+                SenalDatos.valor.label('valor'),
+                SenalDatos.timestamp.label('time')
+            )
+            .join(Senal, SenalDatos.id_señal == Senal.id)
+            .order_by(SenalDatos.timestamp.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"senal": r.senal, "valor": r.valor, "time": r.time} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
@@ -322,14 +361,14 @@ def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db
         # Aquí debes construir la consulta según los parámetros recibidos
         query = (
             select(
-                Datos.timestamp,
-                Datos.valor
+                SensorDatos.timestamp,
+                SensorDatos.valor
             )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Variable, Relacion.id_variable == Variable.id)
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
             .filter(Variable.simbolo.__eq__(metric))
-            .filter(Datos.timestamp >= desde)
-            .filter(Datos.timestamp <= hasta)
+            .filter(SensorDatos.timestamp >= desde)
+            .filter(SensorDatos.timestamp <= hasta)
         )
         resultados = db.execute(query).fetchall()
 
