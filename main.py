@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, literal, extract
+from sqlalchemy import select, func, literal, extract, or_
 from connector import get_db
 from models import *
 from redis_client import RedisClient, json_deserializer, json_serializer
@@ -332,6 +332,33 @@ def read_datos_filtrados(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+@app.get("/datos/grafico1/")
+def read_grafico1(db: Session = Depends(get_db)):
+    try:
+        query = (
+            select(
+                SensorDatos.timestamp.label('time'),
+                SensorDatos.valor.label('value'),
+                Equipo.descripcion.label('equipo'),
+                Variable.simbolo.label('variable')
+            )
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(Equipo, Sensor.id_equipo == Equipo.id)
+            .where(or_(Equipo.nombre == 'AER.COMB', Equipo.nombre == 'AER.DO'))
+            .order_by(SensorDatos.timestamp.asc())
+        )
+        resultados = db.execute(query).fetchall()
+        datos = [{"time": r.time, "value": r.value, "equipo": r.equipo, "variable": r.variable} for r in resultados]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
+
+
+
+
 
 
 @app.get("/metrics")
