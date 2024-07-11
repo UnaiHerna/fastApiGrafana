@@ -341,7 +341,6 @@ def read_grafico1(db: Session = Depends(get_db)):
             select(
                 SensorDatos.timestamp.label('time'),
                 SensorDatos.valor.label('value'),
-                Equipo.descripcion.label('equipo'),
                 Variable.simbolo.label('variable')
             )
             .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
@@ -351,7 +350,7 @@ def read_grafico1(db: Session = Depends(get_db)):
             .order_by(SensorDatos.timestamp.asc())
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"time": r.time, "value": r.value, "equipo": r.equipo, "variable": r.variable} for r in resultados]
+        datos = [{"time": r.time, "value": r.value, "variable": r.variable} for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
