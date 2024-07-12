@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, literal, extract, or_
+from sqlalchemy import select, func, literal, extract, or_, and_
 from connector import get_db
 from models import *
 from redis_client import RedisClient, json_deserializer, json_serializer
@@ -356,8 +356,93 @@ def read_grafico1(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
 
 
+@app.get("/datos/grafico2/")
+def read_grafico2(db: Session = Depends(get_db)):
+    try:
+        subquery_senal = (
+            select(
+                Senal.nombre.label('senal'),
+                SenalDatos.timestamp.label('time'),
+                SenalDatos.valor.label('filteredvalue'),
+            )
+            .join(Senal, SenalDatos.id_señal == Senal.id)
+            .where(Senal.nombre.__eq__('NNH4_FILT'))
+            .subquery()
+        )
 
+        subquery_setpoint = (
+            select(
+                Consigna.nombre.label('consigna'),
+                ValoresConsigna.timestamp.label('time'),
+                ValoresConsigna.valor.label('valuesetpoint'),
+            )
+            .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
+            .where(Consigna.nombre.__eq__('DO_SP'))
+            .subquery()
+        )
 
+        nh4_query = (
+            select(
+                SensorDatos.timestamp.label('time'),
+                SensorDatos.valor.label('value_nh4'),
+                Variable.simbolo.label('variable_nh4'),
+            )
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(Equipo, Sensor.id_equipo == Equipo.id)
+            .where(and_(Equipo.nombre == 'AER.COMB', Variable.simbolo == 'NH4'))
+            .subquery()
+        )
+
+        do_query = (
+            select(
+                SensorDatos.timestamp.label('time'),
+                SensorDatos.valor.label('value_do'),
+                Variable.simbolo.label('variable_do'),
+            )
+            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+            .join(Variable, Sensor.id_variable == Variable.id)
+            .join(Equipo, Sensor.id_equipo == Equipo.id)
+            .where(and_(Equipo.nombre == 'AER.DO', Variable.simbolo == 'DO'))
+            .subquery()
+        )
+
+        query = (
+            select(
+                nh4_query.c.time,
+                nh4_query.c.value_nh4,
+                nh4_query.c.variable_nh4,
+                do_query.c.value_do,
+                do_query.c.variable_do,
+                subquery_senal.c.senal,
+                subquery_senal.c.filteredvalue,
+                subquery_setpoint.c.consigna,
+                subquery_setpoint.c.valuesetpoint,
+            )
+            .join(do_query, nh4_query.c.time == do_query.c.time)
+            .join(subquery_senal, nh4_query.c.time == subquery_senal.c.time, isouter=True)
+            .join(subquery_setpoint, nh4_query.c.time == subquery_setpoint.c.time, isouter=True)
+            .order_by(nh4_query.c.time.asc())
+        )
+
+        resultados = db.execute(query).fetchall()
+        datos = [
+            {
+                "time": r.time,
+                "variable_nh4": r.variable_nh4,
+                "value_nh4": r.value_nh4,
+                "variable_do": r.variable_do,
+                "value_do": r.value_do,
+                "senal": r.senal,
+                "filteredvalue": r.filteredvalue,
+                "consigna": r.consigna,
+                "valuesetpoint": r.valuesetpoint
+            }
+            for r in resultados
+        ]
+        return datos
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
 
 
 @app.get("/metrics")
