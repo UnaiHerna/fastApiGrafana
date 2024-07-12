@@ -361,9 +361,8 @@ def read_grafico2(db: Session = Depends(get_db)):
     try:
         subquery_senal = (
             select(
-                Senal.nombre.label('senal'),
                 SenalDatos.timestamp.label('time'),
-                SenalDatos.valor.label('filteredvalue'),
+                SenalDatos.valor.label('NNH4_FILT'),
             )
             .join(Senal, SenalDatos.id_señal == Senal.id)
             .where(Senal.nombre.__eq__('NNH4_FILT'))
@@ -372,9 +371,8 @@ def read_grafico2(db: Session = Depends(get_db)):
 
         subquery_setpoint = (
             select(
-                Consigna.nombre.label('consigna'),
                 ValoresConsigna.timestamp.label('time'),
-                ValoresConsigna.valor.label('valuesetpoint'),
+                ValoresConsigna.valor.label('DO_SP'),
             )
             .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
             .where(Consigna.nombre.__eq__('DO_SP'))
@@ -384,8 +382,7 @@ def read_grafico2(db: Session = Depends(get_db)):
         nh4_query = (
             select(
                 SensorDatos.timestamp.label('time'),
-                SensorDatos.valor.label('value_nh4'),
-                Variable.simbolo.label('variable_nh4'),
+                SensorDatos.valor.label('NH4_Value'),
             )
             .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
             .join(Variable, Sensor.id_variable == Variable.id)
@@ -397,8 +394,7 @@ def read_grafico2(db: Session = Depends(get_db)):
         do_query = (
             select(
                 SensorDatos.timestamp.label('time'),
-                SensorDatos.valor.label('value_do'),
-                Variable.simbolo.label('variable_do'),
+                SensorDatos.valor.label('DO_Value'),
             )
             .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
             .join(Variable, Sensor.id_variable == Variable.id)
@@ -410,14 +406,10 @@ def read_grafico2(db: Session = Depends(get_db)):
         query = (
             select(
                 nh4_query.c.time,
-                nh4_query.c.value_nh4,
-                nh4_query.c.variable_nh4,
-                do_query.c.value_do,
-                do_query.c.variable_do,
-                subquery_senal.c.senal,
-                subquery_senal.c.filteredvalue,
-                subquery_setpoint.c.consigna,
-                subquery_setpoint.c.valuesetpoint,
+                nh4_query.c.NH4_Value,
+                do_query.c.DO_Value,
+                subquery_senal.c.NNH4_FILT,
+                subquery_setpoint.c.DO_SP,
             )
             .join(do_query, nh4_query.c.time == do_query.c.time)
             .join(subquery_senal, nh4_query.c.time == subquery_senal.c.time, isouter=True)
@@ -429,14 +421,10 @@ def read_grafico2(db: Session = Depends(get_db)):
         datos = [
             {
                 "time": r.time,
-                "variable_nh4": r.variable_nh4,
-                "value_nh4": r.value_nh4,
-                "variable_do": r.variable_do,
-                "value_do": r.value_do,
-                "senal": r.senal,
-                "filteredvalue": r.filteredvalue,
-                "consigna": r.consigna,
-                "valuesetpoint": r.valuesetpoint
+                "NH4_Value": r.NH4_Value,
+                "DO_Value": r.DO_Value,
+                "NNH4_FILT": r.NNH4_FILT,
+                "DO_SP": r.DO_SP
             }
             for r in resultados
         ]
