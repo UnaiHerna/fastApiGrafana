@@ -1,7 +1,7 @@
 # models.py
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, ForeignKeyConstraint, UniqueConstraint, \
     Boolean
-from connector import Base
+from db.connector import Base
 
 
 class Variable(Base):

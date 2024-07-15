@@ -1,58 +1,20 @@
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy import select, func, literal, extract, or_, and_
-from connector import get_db
-from models import *
-from redis_client import RedisClient, json_deserializer, json_serializer
-import json
+from sqlalchemy.orm import Session
+from db.models import Variable, Equipo, Sensor, SensorDatos, SenalDatos, Senal, ValoresConsigna, Consigna
+from db.connector import get_db
+from routers import consigna, sensor, señal
 
 app = FastAPI()
 
-# Inicializa el cliente de Redis
-redis_client = RedisClient().get_client()
+app.include_router(consigna.router)
+app.include_router(sensor.router)
+app.include_router(señal.router)
 
 
 @app.get("/")
 def read_root():
     return {"HolaMundo": "Bienvenido a mi API"}
-
-
-def get_cached_response(key):
-    cached_data = redis_client.get(key)
-    if cached_data:
-        print(f"Data retrieved from Redis for key: {key}")  # Aviso en consola
-        return json.loads(cached_data, object_hook=json_deserializer)
-    return None
-
-
-def set_cached_response(key, data, expiration=60):
-    print(f"Data sent to Redis for key: {key}")  # Aviso en consola
-    redis_client.setex(key, expiration, json.dumps(data, default=json_serializer))
-
-
-def read_datos_by_variable(db, variable_desc):
-    cache_key = f"datos_{variable_desc}"
-    cached_data = get_cached_response(cache_key)
-    if cached_data:
-        return cached_data
-
-    query = (
-        select(
-            SensorDatos.timestamp.label('time'),
-            SensorDatos.valor.label('value'),
-            Equipo.descripcion.label('equipo')
-        )
-        .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
-        .join(Variable, Sensor.id_variable == Variable.id)
-        .join(Equipo, Sensor.id_equipo == Equipo.id)
-        .where(Variable.descripcion == variable_desc)
-        .order_by(SensorDatos.timestamp.asc())
-    )
-    resultados = db.execute(query).fetchall()
-    datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
-
-    set_cached_response(cache_key, datos)
-    return datos
 
 
 @app.get("/variables/")
@@ -73,68 +35,10 @@ def read_relaciones(db: Session = Depends(get_db)):
     relaciones = db.execute(select(Sensor)).scalars().all()
     return relaciones
 
-'''
-@app.get("/datos/")
-def read_datos_wip(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Datos.id,
-                Equipo.nombre.label('equipo_nombre'),
-                Variable.descripcion.label('variable_descripcion'),
-                Datos.timestamp,
-                Datos.valor
-            )
-            .join(Relacion, (Datos.id_equipo == Relacion.id_equipo) & (Datos.id_variable == Relacion.id_variable))
-            .join(Equipo, Relacion.id_equipo == Equipo.id)
-            .join(Variable, Relacion.id_variable == Variable.id)
-            .order_by(Datos.timestamp.asc())
-        )
-        resultados = db.execute(query).fetchall()
 
-        datos = [
-            {"id": r.id, "equipo_nombre": r.equipo_nombre, "variable_descripcion": r.variable_descripcion,
-             "timestamp": r.timestamp, "valor": r.valor}
-            for r in resultados
-        ]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-'''
-
-@app.get("/datos/oxigeno_disuelto/")
-def read_oxigeno_disuelto(db: Session = Depends(get_db)):
-    return read_datos_by_variable(db, 'Oxígeno Disuelto')
-
-
-@app.get("/datos/amonio/")
-def read_amonio(db: Session = Depends(get_db)):
-    return read_datos_by_variable(db, 'Amonio')
-
-
-@app.get("/datos/nitrato/")
-def read_nitrato(db: Session = Depends(get_db)):
-    return read_datos_by_variable(db, 'Nitrato')
-
-
-@app.get("/datos/temperatura/")
-def read_temperatura(db: Session = Depends(get_db)):
-    return read_datos_by_variable(db, 'Temperatura')
-
-
-@app.get("/datos/caudal_aire/")
-def read_caudal_aire(db: Session = Depends(get_db)):
-    return read_datos_by_variable(db, 'Caudal de aire')
-
-
-@app.get("/datos/caudal_agua/")
-def read_caudal_agua(db: Session = Depends(get_db)):
-    return read_datos_by_variable(db, 'Caudal de agua')
-
-
-@app.get("/datos/solidos_suspendidos_totales/")
-def read_solidos_suspendidos_totales(db: Session = Depends(get_db)):
-    return read_datos_by_variable(db, 'Sólidos Suspendidos Totales')
+##############################################################################################################
+# Consultas adicionales
+##############################################################################################################
 
 
 @app.get("/datos/solidos_suspendidos_totales_maxmin/")
@@ -173,28 +77,6 @@ def read_solidos_suspendidos_totales_max_min(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Error al completar la consulta: {str(e)}")
 
 
-@app.get("/datos/promedio_valores/")
-def read_promedio_valores(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Variable.descripcion.label('metric'),
-                func.avg(SensorDatos.valor).label('average_value'),
-                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
-            )
-            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
-            .join(Variable, Sensor.id_variable == Variable.id)
-            .join(Equipo, Sensor.id_equipo == Equipo.id)
-            .where(Variable.descripcion.in_(['Amonio', 'Nitrato', 'Oxígeno Disuelto', 'Sólidos Suspendidos Totales']))
-            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
-
 @app.get("/datos/promedio_valores_mes/")
 def read_promedio_valores_mes(db: Session = Depends(get_db)):
     try:
@@ -213,29 +95,9 @@ def read_promedio_valores_mes(db: Session = Depends(get_db)):
             .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion, 'year', 'month')
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
-
-@app.get("/datos/promedio_valores_grandes/")
-def read_promedio_valores_grandes(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Variable.descripcion.label('metric'),
-                func.avg(SensorDatos.valor).label('average_value'),
-                func.concat(Equipo.nombre, literal(', ('), Variable.u_medida, literal(')')).label('equipo')
-            )
-            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
-            .join(Variable, Sensor.id_variable == Variable.id)
-            .join(Equipo, Sensor.id_equipo == Equipo.id)
-            .where(Variable.descripcion.in_(['Caudal de aire', 'Caudal de agua', 'Temperatura']))
-            .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion)
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo} for r in resultados]
+        datos = [
+            {"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month}
+            for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
@@ -259,76 +121,9 @@ def read_promedio_valores_grandes(db: Session = Depends(get_db)):
             .group_by(Equipo.nombre, Variable.u_medida, Variable.descripcion, 'year', 'month')
         )
         resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
-
-@app.get("/datos/ultimos_valores/")
-def read_ultimos_valores_wip(db: Session = Depends(get_db)):
-    try:
-        subquery = (
-            select(
-                SensorDatos.id,
-                func.max(SensorDatos.timestamp).label('latest_timestamp')
-            )
-            .group_by(SensorDatos.id)
-            .subquery()
-        )
-
-        query = (
-            select(
-                Variable.descripcion.label('metric'),
-                SensorDatos.valor.label('latest_value'),
-                SensorDatos.timestamp.label('time')
-            )
-            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
-            .join(Variable, Sensor.id_variable == Variable.id)
-            .join(subquery, (SensorDatos.id == subquery.c.id) & (SensorDatos.timestamp == subquery.c.latest_timestamp))
-            .order_by(Variable.descripcion.asc())
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"metric": r.metric, "latest_value": r.latest_value, "time": r.time} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
-
-@app.get("/datos/valores_consigna/")
-def read_valores_consigna(db: Session = Depends(get_db)):
-    try:
-        query = (
-            select(
-                Consigna.nombre.label('consigna'),
-                ValoresConsigna.valor.label('valor'),
-                ValoresConsigna.timestamp.label('time'),
-                ValoresConsigna.mode.label('mode')
-            )
-            .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
-            .order_by(ValoresConsigna.timestamp.asc())
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"consigna": r.consigna, "valor": r.valor, "time": r.time, "mode": r.mode} for r in resultados]
-        return datos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
-
-@app.get("/datos/datos_filtrados/")
-def read_datos_filtrados(db: Session = Depends(get_db)):
-    try:
-        query=(
-            select(
-                Senal.nombre.label('senal'),
-                SenalDatos.valor.label('valor'),
-                SenalDatos.timestamp.label('time')
-            )
-            .join(Senal, SenalDatos.id_señal == Senal.id)
-            .order_by(SenalDatos.timestamp.asc())
-        )
-        resultados = db.execute(query).fetchall()
-        datos = [{"senal": r.senal, "valor": r.valor, "time": r.time} for r in resultados]
+        datos = [
+            {"metric": r.metric, "average_value": r.average_value, "equipo": r.equipo, "year": r.year, "month": r.month}
+            for r in resultados]
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")

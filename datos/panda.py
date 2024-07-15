@@ -2,9 +2,9 @@ import pandas as pd
 from sqlalchemy import create_engine
 
 # Ruta al archivo CSV y detalles de la base de datos MySQL
-csv_file1 = 'datos/Sensor_values.csv'
-csv_file2 = 'datos/Setpoint_values.csv'
-csv_file3 = 'datos/Filtered_values.csv'
+csv_file1 = 'Sensor_values.csv'
+csv_file2 = 'Setpoint_values.csv'
+csv_file3 = 'Filtered_values.csv'
 mysql_username = 'root'
 mysql_password = 'Cim12345!'
 mysql_host = 'localhost'
