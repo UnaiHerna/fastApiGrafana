@@ -118,24 +118,41 @@ def datos_condicionales_sensor(
         equipos: Optional[str] = None,
         db: Session = Depends(get_db)
 ):
-    match (variable, equipo, variables, equipos):
-        case (variable, None, None, None) if variable:
-            return read_datos_sensor_by_variable(db, variable)
+    '''
+        match (variable, equipo, variables, equipos):
+            case (variable, None, None, None) if variable:
+                return read_datos_sensor_by_variable(db, variable)
 
-        case (None, equipo, None, None) if equipo:
-            return read_datos_sensor_by_equipo(db, equipo)
+            case (None, equipo, None, None) if equipo:
+                return read_datos_sensor_by_equipo(db, equipo)
 
-        case (None, None, variables, None) if variables:
-            return read_datos_sensor_multiple_by_variable(db, variables)
+            case (None, None, variables, None) if variables:
+                return read_datos_sensor_multiple_by_variable(db, variables)
 
-        case (None, None, None, equipos) if equipos:
-            return read_datos_sensor_multiple_by_equipos(db, equipos)
+            case (None, None, None, equipos) if equipos:
+                return read_datos_sensor_multiple_by_equipos(db, equipos)
 
-        case(variable, equipo, None, None) if variable and equipo:
-            return read_datos_sensor_variable_by_equipo(db, variable, equipo)
+            case(variable, equipo, None, None) if variable and equipo:
+                return read_datos_sensor_variable_by_equipo(db, variable, equipo)
 
-        case (None, None, None, None):
-            raise HTTPException(status_code=400, detail="Debe proporcionar al menos un parámetro.")
+            case (None, None, None, None):
+                raise HTTPException(status_code=400, detail="Debe proporcionar al menos un parámetro.")
 
-        case (_, _, _, _):
-            raise HTTPException(status_code=404, detail="No existe esa combinación.")
+            case (_, _, _, _):
+                raise HTTPException(status_code=404, detail="No existe esa combinación.")
+        '''
+    if variable and not equipo and not variables and not equipos:
+        return read_datos_sensor_by_variable(db, variable)
+    elif equipo and not variable and not variables and not equipos:
+        return read_datos_sensor_by_equipo(db, equipo)
+    elif variables and not variable and not equipo and not equipos:
+        return read_datos_sensor_multiple_by_variable(db, variables)
+    elif equipos and not variable and not variables and not equipo:
+        return read_datos_sensor_multiple_by_equipos(db, equipos)
+    elif variable and equipo and not variables and not equipos:
+        return read_datos_sensor_variable_by_equipo(db, variable, equipo)
+    elif not variable and not variables and not equipo and not equipos:
+        raise HTTPException(status_code=400, detail="Debe proporcionar al menos un parámetro.")
+    else:
+        raise HTTPException(status_code=404, detail="No existe esa combinación.")
+
