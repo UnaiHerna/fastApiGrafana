@@ -24,7 +24,7 @@ def read_datos_consigna_by_nombre(db, consigna):
     query = (
         select(
             Consigna.nombre.label('consigna'),
-            ValoresConsigna.valor.label('valor'),
+            ValoresConsigna.valor.label('value'),
             ValoresConsigna.timestamp.label('time'),
             ValoresConsigna.mode.label('mode')
         )
@@ -48,7 +48,7 @@ def read_datos_consigna_by_equipo(db, equipo):
     query = (
         select(
             Consigna.nombre.label('consigna'),
-            ValoresConsigna.valor.label('valor'),
+            ValoresConsigna.valor.label('value'),
             ValoresConsigna.timestamp.label('time'),
             ValoresConsigna.mode.label('mode')
         )
