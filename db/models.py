@@ -69,7 +69,7 @@ class ValoresConsigna(Base):
     id_consigna = Column(Integer, ForeignKey('consigna.id'), primary_key=True, nullable=False)
     timestamp = Column(DateTime, primary_key=True, nullable=False)
     valor = Column(Float)
-    mode = Column(Boolean)
+    mode = Column(Integer)
 
 class HLC(Base):
     __tablename__ = 'hlc'
