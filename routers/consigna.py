@@ -6,6 +6,7 @@ from db.connector import get_db
 from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
 from datetime import datetime
+from utils.date_checker import date_checker
 
 router = APIRouter(
     prefix="/datos/consigna",
@@ -14,8 +15,8 @@ router = APIRouter(
 )
 
 
-def read_datos_consigna_by_nombre(db, consigna, start_time=None, end_time=None):
-    cache_key = f"datos_consigna_{consigna}_{start_time}_{end_time}"
+def read_datos_consigna_by_nombre(db, consigna, start_date=None, end_date=None):
+    cache_key = f"datos_consigna_{consigna}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -32,10 +33,10 @@ def read_datos_consigna_by_nombre(db, consigna, start_time=None, end_time=None):
         .order_by(ValoresConsigna.timestamp.asc())
     )
 
-    if start_time:
-        query = query.where(ValoresConsigna.timestamp >= start_time)
-    if end_time:
-        query = query.where(ValoresConsigna.timestamp <= end_time)
+    if date_checker(start_date, end_date):
+        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
+    query = query.where(ValoresConsigna.timestamp >= start_date)
+    query = query.where(ValoresConsigna.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "mode": r.mode, "consigna": r.consigna} for r in resultados]
@@ -44,8 +45,8 @@ def read_datos_consigna_by_nombre(db, consigna, start_time=None, end_time=None):
     return datos
 
 
-def read_datos_consigna_by_equipo(db, equipo, start_time=None, end_time=None):
-    cache_key = f"datos_consigna_{equipo}_{start_time}_{end_time}"
+def read_datos_consigna_by_equipo(db, equipo, start_date=None, end_date=None):
+    cache_key = f"datos_consigna_{equipo}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -63,10 +64,10 @@ def read_datos_consigna_by_equipo(db, equipo, start_time=None, end_time=None):
         .order_by(ValoresConsigna.timestamp.asc())
     )
 
-    if start_time:
-        query = query.where(ValoresConsigna.timestamp >= start_time)
-    if end_time:
-        query = query.where(ValoresConsigna.timestamp <= end_time)
+    if date_checker(start_date, end_date):
+        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
+    query = query.where(ValoresConsigna.timestamp >= start_date)
+    query = query.where(ValoresConsigna.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "mode": r.mode, "consigna": r.consigna} for r in resultados]
@@ -75,20 +76,20 @@ def read_datos_consigna_by_equipo(db, equipo, start_time=None, end_time=None):
     return datos
 
 
-def read_consigna_multiple_by_nombre(db, nombres, start_time=None, end_time=None):
+def read_consigna_multiple_by_nombre(db, nombres, start_date=None, end_date=None):
     consigna_list = nombres.split(',')
     all_data = {}
     for consigna in consigna_list:
-        data = read_datos_consigna_by_nombre(db, consigna, start_time, end_time)
+        data = read_datos_consigna_by_nombre(db, consigna, start_date, end_date)
         all_data[consigna] = data
     return all_data
 
 
-def read_consigna_multiple_by_equipo(db, equipos, start_time=None, end_time=None):
+def read_consigna_multiple_by_equipo(db, equipos, start_date=None, end_date=None):
     equipo_list = equipos.split(',')
     all_data = {}
     for equipo in equipo_list:
-        data = read_datos_consigna_by_equipo(db, equipo, start_time, end_time)
+        data = read_datos_consigna_by_equipo(db, equipo, start_date, end_date)
         all_data[equipo] = data
     return all_data
 
@@ -99,17 +100,18 @@ def datos_condicionales_consigna(
         nombres: Optional[str] = None,
         equipo: Optional[str] = None,
         equipos: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
         db: Session = Depends(get_db)
 ):
+
     if nombre and not equipo and not nombres and not equipos:
-        return read_datos_consigna_by_nombre(db, nombre, start_time, end_time)
+        return read_datos_consigna_by_nombre(db, nombre, start_date, end_date)
     elif equipo and not nombre and not nombres and not equipos:
-        return read_datos_consigna_by_equipo(db, equipo, start_time, end_time)
+        return read_datos_consigna_by_equipo(db, equipo, start_date, end_date)
     elif nombres and not equipo and not nombre and not equipos:
-        return read_consigna_multiple_by_nombre(db, nombres, start_time, end_time)
+        return read_consigna_multiple_by_nombre(db, nombres, start_date, end_date)
     elif equipos and not equipo and not nombre and not nombres:
-        return read_consigna_multiple_by_equipo(db, equipos, start_time, end_time)
+        return read_consigna_multiple_by_equipo(db, equipos, start_date, end_date)
     else:
         raise HTTPException(status_code=400, detail="Debe proporcionar los datos de forma correcta.")
