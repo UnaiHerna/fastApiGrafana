@@ -7,6 +7,8 @@ from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
 from datetime import datetime
 
+from utils.date_checker import date_checker
+
 router = APIRouter(
     prefix="/datos/sensor",
     tags=["sensor"],
@@ -14,8 +16,8 @@ router = APIRouter(
 )
 
 
-def read_datos_sensor_by_variable(db, variable, start_time=None, end_time=None):
-    cache_key = f"datos_sensor_{variable}_{start_time}_{end_time}"
+def read_datos_sensor_by_variable(db, variable, start_date=None, end_date=None):
+    cache_key = f"datos_sensor_{variable}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -33,10 +35,10 @@ def read_datos_sensor_by_variable(db, variable, start_time=None, end_time=None):
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    if start_time:
-        query = query.where(SensorDatos.timestamp >= start_time)
-    if end_time:
-        query = query.where(SensorDatos.timestamp <= end_time)
+    if date_checker(start_date, end_date):
+        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
+    query = query.where(SensorDatos.timestamp >= start_date)
+    query = query.where(SensorDatos.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
@@ -45,8 +47,8 @@ def read_datos_sensor_by_variable(db, variable, start_time=None, end_time=None):
     return datos
 
 
-def read_datos_sensor_by_equipo(db, equipo, start_time=None, end_time=None):
-    cache_key = f"datos_sensor_{equipo}_{start_time}_{end_time}"
+def read_datos_sensor_by_equipo(db, equipo, start_date=None, end_date=None):
+    cache_key = f"datos_sensor_{equipo}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -65,10 +67,10 @@ def read_datos_sensor_by_equipo(db, equipo, start_time=None, end_time=None):
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    if start_time:
-        query = query.where(SensorDatos.timestamp >= start_time)
-    if end_time:
-        query = query.where(SensorDatos.timestamp <= end_time)
+    if date_checker(start_date, end_date):
+        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
+    query = query.where(SensorDatos.timestamp >= start_date)
+    query = query.where(SensorDatos.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "variable": r.variable, "equipo": r.equipo} for r in resultados]
@@ -77,26 +79,26 @@ def read_datos_sensor_by_equipo(db, equipo, start_time=None, end_time=None):
     return datos
 
 
-def read_datos_sensor_multiple_by_variable(db, variables, start_time=None, end_time=None):
+def read_datos_sensor_multiple_by_variable(db, variables, start_date=None, end_date=None):
     variable_list = variables.split(',')
     all_data = {}
     for variable in variable_list:
-        data = read_datos_sensor_by_variable(db, variable, start_time, end_time)
+        data = read_datos_sensor_by_variable(db, variable, start_date, end_date)
         all_data[variable] = data
     return all_data
 
 
-def read_datos_sensor_multiple_by_equipos(db, equipos, start_time=None, end_time=None):
+def read_datos_sensor_multiple_by_equipos(db, equipos, start_date=None, end_date=None):
     equipo_list = equipos.split(',')
     all_data = {}
     for equipo in equipo_list:
-        data = read_datos_sensor_by_equipo(db, equipo, start_time, end_time)
+        data = read_datos_sensor_by_equipo(db, equipo, start_date, end_date)
         all_data[equipo] = data
     return all_data
 
 
-def read_datos_sensor_variable_by_equipo(db, variable, equipo, start_time=None, end_time=None):
-    cache_key = f"datos_sensor_{variable}_{equipo}_{start_time}_{end_time}"
+def read_datos_sensor_variable_by_equipo(db, variable, equipo, start_date=None, end_date=None):
+    cache_key = f"datos_sensor_{variable}_{equipo}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -115,10 +117,10 @@ def read_datos_sensor_variable_by_equipo(db, variable, equipo, start_time=None, 
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    if start_time:
-        query = query.where(SensorDatos.timestamp >= start_time)
-    if end_time:
-        query = query.where(SensorDatos.timestamp <= end_time)
+    if date_checker(start_date, end_date):
+        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
+    query = query.where(SensorDatos.timestamp >= start_date)
+    query = query.where(SensorDatos.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "variable": r.variable, "equipo": r.equipo} for r in resultados]
@@ -133,20 +135,20 @@ def datos_condicionales_sensor(
         variables: Optional[str] = None,
         equipo: Optional[str] = None,
         equipos: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        start_date: Optional[datetime] = None,
+        end_date: Optional[datetime] = None,
         db: Session = Depends(get_db)
 ):
     if variable and not equipo and not variables and not equipos:
-        return read_datos_sensor_by_variable(db, variable, start_time, end_time)
+        return read_datos_sensor_by_variable(db, variable, start_date, end_date)
     elif equipo and not variable and not variables and not equipos:
-        return read_datos_sensor_by_equipo(db, equipo, start_time, end_time)
+        return read_datos_sensor_by_equipo(db, equipo, start_date, end_date)
     elif variables and not variable and not equipo and not equipos:
-        return read_datos_sensor_multiple_by_variable(db, variables, start_time, end_time)
+        return read_datos_sensor_multiple_by_variable(db, variables, start_date, end_date)
     elif equipos and not variable and not variables and not equipo:
-        return read_datos_sensor_multiple_by_equipos(db, equipos, start_time, end_time)
+        return read_datos_sensor_multiple_by_equipos(db, equipos, start_date, end_date)
     elif variable and equipo and not variables and not equipos:
-        return read_datos_sensor_variable_by_equipo(db, variable, equipo, start_time, end_time)
+        return read_datos_sensor_variable_by_equipo(db, variable, equipo, start_date, end_date)
     elif not variable and not variables and not equipo and not equipos:
         raise HTTPException(status_code=400, detail="Debe proporcionar al menos un parámetro.")
     else:
