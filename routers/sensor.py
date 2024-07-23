@@ -35,10 +35,10 @@ def read_datos_sensor_by_variable(db, variable, start_date=None, end_date=None):
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    if date_checker(start_date, end_date):
-        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
-    query = query.where(SensorDatos.timestamp >= start_date)
-    query = query.where(SensorDatos.timestamp <= end_date)
+    if start_date:
+        query = query.where(SensorDatos.timestamp >= start_date)
+    if end_date:
+        query = query.where(SensorDatos.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
@@ -67,10 +67,10 @@ def read_datos_sensor_by_equipo(db, equipo, start_date=None, end_date=None):
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    if date_checker(start_date, end_date):
-        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
-    query = query.where(SensorDatos.timestamp >= start_date)
-    query = query.where(SensorDatos.timestamp <= end_date)
+    if start_date:
+        query = query.where(SensorDatos.timestamp >= start_date)
+    if end_date:
+        query = query.where(SensorDatos.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "variable": r.variable, "equipo": r.equipo} for r in resultados]
@@ -117,10 +117,10 @@ def read_datos_sensor_variable_by_equipo(db, variable, equipo, start_date=None, 
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    if date_checker(start_date, end_date):
-        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
-    query = query.where(SensorDatos.timestamp >= start_date)
-    query = query.where(SensorDatos.timestamp <= end_date)
+    if start_date:
+        query = query.where(SensorDatos.timestamp >= start_date)
+    if end_date:
+        query = query.where(SensorDatos.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "variable": r.variable, "equipo": r.equipo} for r in resultados]

@@ -32,10 +32,10 @@ def read_senal_datos_by_nombre(db, senal, start_date=None, end_date=None):
         .order_by(SenalDatos.timestamp.asc())
     )
 
-    if date_checker(start_date, end_date):
-        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
-    query = query.where(SenalDatos.timestamp >= start_date)
-    query = query.where(SenalDatos.timestamp <= end_date)
+    if start_date:
+        query = query.where(SenalDatos.timestamp >= start_date)
+    if end_date:
+        query = query.where(SenalDatos.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "senal": r.senal} for r in resultados]

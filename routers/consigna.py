@@ -33,10 +33,10 @@ def read_datos_consigna_by_nombre(db, consigna, start_date=None, end_date=None):
         .order_by(ValoresConsigna.timestamp.asc())
     )
 
-    if date_checker(start_date, end_date):
-        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
-    query = query.where(ValoresConsigna.timestamp >= start_date)
-    query = query.where(ValoresConsigna.timestamp <= end_date)
+    if start_date:
+        query = query.where(ValoresConsigna.timestamp >= start_date)
+    if end_date:
+        query = query.where(ValoresConsigna.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "mode": r.mode, "consigna": r.consigna} for r in resultados]
@@ -64,10 +64,10 @@ def read_datos_consigna_by_equipo(db, equipo, start_date=None, end_date=None):
         .order_by(ValoresConsigna.timestamp.asc())
     )
 
-    if date_checker(start_date, end_date):
-        return HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor a la fecha de fin")
-    query = query.where(ValoresConsigna.timestamp >= start_date)
-    query = query.where(ValoresConsigna.timestamp <= end_date)
+    if start_date:
+        query = query.where(ValoresConsigna.timestamp >= start_date)
+    if end_date:
+        query = query.where(ValoresConsigna.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "mode": r.mode, "consigna": r.consigna} for r in resultados]
