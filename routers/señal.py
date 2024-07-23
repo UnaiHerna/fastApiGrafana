@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 
 from fastapi import Depends, HTTPException, APIRouter, status
@@ -15,8 +16,8 @@ router = APIRouter(
 )
 
 
-def read_senal_datos_by_nombre(db, senal):
-    cache_key = f"datos_senal_{senal}"
+def read_senal_datos_by_nombre(db, senal, start_time=None, end_time=None):
+    cache_key = f"datos_senal_{senal}_{start_time}_{end_time}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -38,11 +39,11 @@ def read_senal_datos_by_nombre(db, senal):
     return datos
 
 
-def read_senal_multiple_by_nombre(db, nombres):
+def read_senal_multiple_by_nombre(db, nombres, start_time=None, end_time=None):
     senal_list = nombres.split(',')
     all_data = {}
     for senal in senal_list:
-        data = read_senal_datos_by_nombre(db, senal)
+        data = read_senal_datos_by_nombre(db, senal, start_time, end_time)
         all_data[senal] = data
     return all_data
 
@@ -51,12 +52,14 @@ def read_senal_multiple_by_nombre(db, nombres):
 def datos_condicionales_consigna(
         nombre: Optional[str] = None,
         nombres: Optional[str] = None,
+        start_time: Optional[datetime] = None,
+        end_time: Optional[datetime] = None,
         db: Session = Depends(get_db)
 ):
     if nombre and not nombres:
-        return read_senal_datos_by_nombre(db, nombre)
+        return read_senal_datos_by_nombre(db, nombre, start_time, end_time)
     elif nombres and not nombre:
-        return read_senal_multiple_by_nombre(db, nombres)
+        return read_senal_multiple_by_nombre(db, nombres, start_time, end_time)
     else:
         # Lógica para manejar la solicitud cuando no se proporciona ninguno de los parámetros esperados
         raise HTTPException(status_code=400, detail="Debe proporcionar los datos de forma correcta.")
