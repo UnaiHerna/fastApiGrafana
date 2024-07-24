@@ -1,7 +1,12 @@
 # models.py
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, ForeignKeyConstraint, UniqueConstraint, \
     Boolean
-from db.connector import Base
+from sqlalchemy.orm import DeclarativeBase
+
+
+# Define the base class
+class Base(DeclarativeBase):
+    pass
 
 
 class Variable(Base):

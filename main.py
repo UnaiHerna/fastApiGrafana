@@ -1,11 +1,21 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy import select, func, literal, extract, or_, and_
 from sqlalchemy.orm import Session
 from db.models import Variable, Equipo, Sensor, SensorDatos, SenalDatos, Senal, ValoresConsigna, Consigna
 from db.connector import get_db
+from db.redis_client import AsyncRedisClient
 from routers import consigna, sensor, señal
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def startup_middleware(request: Request, call_next):
+    if not getattr(app.state, "redis_initialized", False):
+        await AsyncRedisClient().initialize()
+        app.state.redis_initialized = True
+    response = await call_next(request)
+    return response
 
 app.include_router(consigna.router)
 app.include_router(sensor.router)
@@ -206,9 +216,9 @@ def read_grafico2(db: Session = Depends(get_db)):
                 subquery_senal.c.NNH4_FILT,
                 subquery_setpoint.c.DO_SP,
             )
-            .join(do_query, nh4_query.c.time == do_query.c.time)
-            .join(subquery_senal, nh4_query.c.time == subquery_senal.c.time, isouter=True)
-            .join(subquery_setpoint, nh4_query.c.time == subquery_setpoint.c.time, isouter=True)
+            .join(do_query, nh4_query.c.time.__eq__(do_query.c.time))
+            .join(subquery_senal, nh4_query.c.time.__eq__(subquery_senal.c.time), isouter=True)
+            .join(subquery_setpoint, nh4_query.c.time.__eq__(subquery_setpoint.c.time), isouter=True)
             .order_by(nh4_query.c.time.asc())
         )
 
