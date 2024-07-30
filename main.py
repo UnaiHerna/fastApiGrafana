@@ -3,7 +3,7 @@ from sqlalchemy import select, func, literal, extract, or_, and_
 from sqlalchemy.orm import Session
 from db.models import Variable, Equipo, Sensor, SensorDatos, SenalDatos, Senal, ValoresConsigna, Consigna
 from db.connector import get_db
-from routers import consigna, sensor, señal
+from routers import consigna, sensor, señal, sensorVacio
 
 app = FastAPI()
 
@@ -11,6 +11,25 @@ app.include_router(consigna.router)
 app.include_router(sensor.router)
 app.include_router(señal.router)
 
+app.include_router(sensorVacio.router)
+'''
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://your-allowed-origin.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# OAuth2 configuration
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Include routers with dependencies
+app.include_router(consigna.router, dependencies=[Depends(get_current_user)])
+app.include_router(sensor.router, dependencies=[Depends(get_current_user)])
+app.include_router(señal.router, dependencies=[Depends(get_current_user)])
+'''
 
 @app.get("/")
 def read_root():
@@ -226,54 +245,3 @@ def read_grafico2(db: Session = Depends(get_db)):
         return datos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al completar la query: {str(e)}")
-
-
-@app.get("/metrics")
-def get_metrics_metadata(db: Session = Depends(get_db)):
-    try:
-        variables = db.execute(select(Variable)).scalars().all()
-        equipos = db.execute(select(Equipo)).scalars().all()
-
-        # Formatear los elementos y receptores en un formato compatible con Grafana
-        variables_metadata = [{"text": variable.descripcion, "value": variable.id} for variable in variables]
-        equipos_metadata = [{"text": equipo.nombre, "value": equipo.id} for equipo in equipos]
-
-        # Combinar elementos y receptores en un solo objeto
-        metadata = {
-            "variables": variables_metadata,
-            "equipos": equipos_metadata
-        }
-
-        return metadata
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al obtener metadatos: {str(e)}")
-
-
-@app.get("/query")
-def query_data(metric: str, desde: int, hasta: int, db: Session = Depends(get_db)):
-    try:
-        # Aquí debes construir la consulta según los parámetros recibidos
-        query = (
-            select(
-                SensorDatos.timestamp,
-                SensorDatos.valor
-            )
-            .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
-            .join(Variable, Sensor.id_variable == Variable.id)
-            .filter(Variable.simbolo.__eq__(metric))
-            .filter(SensorDatos.timestamp >= desde)
-            .filter(SensorDatos.timestamp <= hasta)
-        )
-        resultados = db.execute(query).fetchall()
-
-        # Formatear los resultados en un formato compatible con Grafana
-        data_points = [{"timestamp": r.timestamp, "value": r.valor} for r in resultados]
-
-        response = {
-            "target": metric,
-            "datapoints": data_points
-        }
-
-        return response
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error al ejecutar la consulta: {str(e)}")
