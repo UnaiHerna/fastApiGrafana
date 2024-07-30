@@ -45,18 +45,18 @@ def read_datos_sensor_by_variable(db, variable, start_date=None, end_date=None):
 
     import random
 
-    huecos_totales = random.randint(1, 4)  # Number of gaps
+    huecos_totales = random.randint(1, 4)  # Número de huecos
     huecos_posiciones = set()
     huecos_info = []
-    sigma = (len(resultados) / 100)*0.25
+    sigma = (len(datos) / 100) * 0.25
+
     for _ in range(huecos_totales):
-        long_hueco = min(len(resultados) / 100 + sigma, max(len(resultados) / 100 - sigma, int(random.gauss(len(resultados) / 100, sigma))))  # Length of each gap
-        while True:
-            pos = int(random.randint(0, len(resultados) - long_hueco))
-            if not any(pos + i in huecos_posiciones for i in range(long_hueco)):
-                huecos_posiciones.update(range(pos, pos + long_hueco))
-                huecos_info.append((pos, long_hueco, datos[pos]['time']))
-                break
+        long_hueco = int(
+            min(len(datos) / 100 + sigma, max(len(datos) / 100 - sigma, int(random.gauss(len(datos) / 100, sigma)))))
+        pos = random.randint(0, len(datos) - long_hueco)
+        if not any(pos + i in huecos_posiciones for i in range(long_hueco)):
+            huecos_posiciones.update(range(pos, pos + long_hueco))
+            huecos_info.append((pos, long_hueco, datos[pos]['time']))
 
     for pos, length, time in huecos_info:
         print(f"Hueco en la posición: {pos} de {length} de largo, empezando en {time}")
