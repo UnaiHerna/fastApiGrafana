@@ -15,6 +15,7 @@ router = APIRouter(
 )
 
 
+# Hacer que entregue delta de t
 def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_date=None):
     cache_key = f"datos_sensor_{variable}_{equipo}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
@@ -52,14 +53,17 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
     huecos_info = []
     sigma = (len(datos) / 100) * 0.25
 
+    # Generar huecos
     for _ in range(huecos_totales):
         long_hueco = int(
             min(len(datos) / 100 + sigma, max(len(datos) / 100 - sigma, int(random.gauss(len(datos) / 100, sigma)))))
         pos = random.randint(0, len(datos) - long_hueco)
+        # Comprobar que no caigan 2 huecos en la misma posición
         if not any(pos + i in huecos_posiciones for i in range(long_hueco)):
             huecos_posiciones.update(range(pos, pos + long_hueco))
             huecos_info.append((pos, long_hueco, datos[pos]['time']))
 
+    # Imprimir huecos
     for pos, length, time in huecos_info:
         print(f"Hueco en la posición: {pos} de {length} de largo, empezando en {time}")
 
@@ -67,15 +71,26 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
 
     set_cached_response(cache_key, datos_with_gaps)
 
+    #################### AGREGACIÓN ####################
+    # Query para conseguir delta_t
+    query_delta = (
+        select(
+            Sensor.deltat.label('deltat')
+        )
+        .join(Variable, Sensor.id_variable == Variable.id)
+        .join(Equipo, Sensor.id_equipo == Equipo.id)
+        .where(Variable.simbolo == variable)
+        .where(Equipo.nombre == equipo)
+    )
+
+    deltat = db.execute(query_delta).one()[0]
+
     s_data = [dato['value'] for dato in datos_with_gaps]
     s_time = [int(dato['time'].timestamp() * 1000) for dato in datos_with_gaps]
 
-    delta_dts = 900
+    z = calcular_delta_prima(deltat, [datos_with_gaps[0]['time'], datos_with_gaps[-1]['time']])
 
-    z = calcular_delta_prima(delta_dts, [datos_with_gaps[0]['time'], datos_with_gaps[-1]['time']])
-
-    #
-    if z == delta_dts:
+    if z == deltat:
         return datos_with_gaps
 
     datos_agregados = get_datos_sin_hueco(s_data, s_time, z)

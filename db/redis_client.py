@@ -40,6 +40,6 @@ def get_cached_response(key):
     return None
 
 
-def set_cached_response(key, data, expiration=2):
+def set_cached_response(key, data, expiration=30):
     print(f"Data sent to Redis for key: {key}")  # Aviso en consola
     redis_client.setex(key, expiration, json.dumps(data, default=json_serializer))

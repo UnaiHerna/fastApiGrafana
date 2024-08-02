@@ -23,6 +23,7 @@ class Sensor(Base):
     __tablename__ = 'sensor'
     id_equipo = Column(Integer, ForeignKey('equipo.id'), primary_key=True, nullable=False)
     id_variable = Column(Integer, ForeignKey('variable.id'), primary_key=True, nullable=False)
+    deltat = Column(Integer)
 
 
 class SensorDatos(Base):
@@ -106,3 +107,11 @@ class ActuadorDatos(Base):
     __tablename__ = 'actuador_datos'
     id_actuador = Column(Integer, ForeignKey('actuador.id'), primary_key=True, nullable=False)
     timestamp = Column(DateTime, primary_key=True, nullable=False)
+
+class User(Base):
+    __tablename__ = 'user'
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    password = Column(String)
+    disabled = Column(Boolean, default=True)
