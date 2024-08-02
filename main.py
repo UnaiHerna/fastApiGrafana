@@ -10,8 +10,8 @@ app = FastAPI()
 app.include_router(consigna.router)
 app.include_router(sensor.router)
 app.include_router(señal.router)
-
 app.include_router(sensorVacio.router)
+
 '''
 # CORS configuration
 app.add_middleware(
