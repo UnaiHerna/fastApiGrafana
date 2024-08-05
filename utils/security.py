@@ -1,9 +1,45 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from datetime import datetime, timedelta, timezone
 from typing import Optional
+from jose import jwt, JWTError
 from pydantic import BaseModel
+from fastapi import Request, HTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from datetime import datetime, timedelta, timezone
+from collections import defaultdict
+
+# Dictionary to store request counts and timestamps
+request_counts = defaultdict(lambda: {"count": 0, "timestamps": []})
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app, max_requests_per_minute: int, max_requests_total: int):
+        super().__init__(app)
+        self.max_requests_per_minute = max_requests_per_minute
+        self.max_requests_total = max_requests_total
+
+    async def dispatch(self, request: Request, call_next):
+        client_ip = request.client.host
+        current_time = datetime.now()
+
+        # Clean up old timestamps
+        request_counts[client_ip]["timestamps"] = [
+            timestamp for timestamp in request_counts[client_ip]["timestamps"]
+            if current_time - timestamp < timedelta(minutes=1)
+        ]
+
+        # Check if the request limit is exceeded
+        if len(request_counts[client_ip]["timestamps"]) >= self.max_requests_per_minute or \
+                request_counts[client_ip]["count"] >= self.max_requests_total:
+            raise HTTPException(status_code=429, detail="Too many requests")
+
+        # Update request counts and timestamps
+        request_counts[client_ip]["timestamps"].append(current_time)
+        request_counts[client_ip]["count"] += 1
+
+        response = await call_next(request)
+        return response
+
 
 # Secret key to encode and decode JWT tokens
 SECRET_KEY = "your-secret-key"  # Use environment variable or secure storage in production

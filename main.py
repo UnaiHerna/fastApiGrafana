@@ -4,8 +4,11 @@ from sqlalchemy.orm import Session
 from db.models import Variable, Equipo, Sensor, SensorDatos, SenalDatos, Senal, ValoresConsigna, Consigna
 from db.connector import get_db
 from routers import consigna, sensor, señal, sensorVacio
+from utils.security import RateLimitMiddleware
 
 app = FastAPI()
+
+app.add_middleware(RateLimitMiddleware, max_requests_per_minute=3, max_requests_total=10)
 
 app.include_router(consigna.router)
 app.include_router(sensor.router)

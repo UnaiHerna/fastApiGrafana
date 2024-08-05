@@ -91,6 +91,9 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
     z = calcular_delta_prima(deltat, [datos_with_gaps[0]['time'], datos_with_gaps[-1]['time']])
 
     if z == deltat:
+        for pos, length, time in huecos_info:
+            for i in range(pos, pos + length):
+                datos_with_gaps.insert(i, {"time": datos[i]['time'], "value": None, "equipo": datos[i]['equipo']})
         return datos_with_gaps
 
     datos_agregados = get_datos_sin_hueco(s_data, s_time, z)

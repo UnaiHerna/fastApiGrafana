@@ -6,4 +6,5 @@ pydantic~=2.7.4
 python-multipart
 redis~=5.0.7
 pandas~=2.2.2
-jose
+starlette~=0.37.2
+jose~=1.0.0

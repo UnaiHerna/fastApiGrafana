@@ -90,6 +90,10 @@ def get_datos_sin_hueco(raw_data, raw_time, z):
             grouped_data.append([fecha_datetime, round(avg, 2)])
             offset_ = valor_offset['offset'][1]
         else:
+            average_timestamp = (t0 + t1) / 2
+            missing_datetime = datetime.datetime.fromtimestamp(average_timestamp / 1000.0)
+            grouped_data.append([missing_datetime, None])
+
             t0 = t1
             t1 = t0 + intervalo
 
