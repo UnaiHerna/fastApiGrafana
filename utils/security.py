@@ -8,34 +8,52 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
-# Dictionary to store request counts and timestamps
-request_counts = defaultdict(lambda: {"count": 0, "timestamps": []})
+# Dictionary to store request counts and timestamps by IP
+ip_request_counts = defaultdict(lambda: {"count": 0, "timestamps": []})
+
+# Dictionary to store request counts and timestamps by path
+path_request_counts = defaultdict(lambda: {"count": 0, "timestamps": []})
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, max_requests_per_minute: int, max_requests_total: int):
+    def __init__(self, app, max_requests_per_minute: int, max_requests_total: int, path_limit: int):
         super().__init__(app)
         self.max_requests_per_minute = max_requests_per_minute
         self.max_requests_total = max_requests_total
+        self.path_limit = path_limit  # The limit for total requests to a path
 
     async def dispatch(self, request: Request, call_next):
         client_ip = request.client.host
         current_time = datetime.now()
+        path = request.url.path
 
-        # Clean up old timestamps
-        request_counts[client_ip]["timestamps"] = [
-            timestamp for timestamp in request_counts[client_ip]["timestamps"]
+        # Handle IP-based rate limiting
+        ip_data = ip_request_counts[client_ip]
+        ip_data["timestamps"] = [
+            timestamp for timestamp in ip_data["timestamps"]
             if current_time - timestamp < timedelta(minutes=1)
         ]
 
-        # Check if the request limit is exceeded
-        if len(request_counts[client_ip]["timestamps"]) >= self.max_requests_per_minute or \
-                request_counts[client_ip]["count"] >= self.max_requests_total:
-            raise HTTPException(status_code=429, detail="Too many requests")
+        if len(ip_data["timestamps"]) >= self.max_requests_per_minute:
+            raise HTTPException(status_code=429, detail="Too many requests from this IP")
 
-        # Update request counts and timestamps
-        request_counts[client_ip]["timestamps"].append(current_time)
-        request_counts[client_ip]["count"] += 1
+        # Handle path-based rate limiting
+        path_data = path_request_counts[path]
+        path_data["timestamps"] = [
+            timestamp for timestamp in path_data["timestamps"]
+            if current_time - timestamp < timedelta(minutes=1)
+        ]
+
+        if len(path_data["timestamps"]) >= self.path_limit:
+            raise HTTPException(status_code=429, detail="This path has received too many requests")
+
+        # Update IP-based request counts
+        ip_data["timestamps"].append(current_time)
+        ip_data["count"] += 1
+
+        # Update path-based request counts
+        path_data["timestamps"].append(current_time)
+        path_data["count"] += 1
 
         response = await call_next(request)
         return response
