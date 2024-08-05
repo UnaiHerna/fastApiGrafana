@@ -8,7 +8,7 @@ from utils.security import RateLimitMiddleware
 
 app = FastAPI()
 
-app.add_middleware(RateLimitMiddleware, max_requests_per_minute=3, max_requests_total=10, path_limit=10)
+app.add_middleware(RateLimitMiddleware, max_requests_per_minute=10, max_requests_total=100, path_limit=10)
 
 app.include_router(consigna.router)
 app.include_router(sensor.router)
