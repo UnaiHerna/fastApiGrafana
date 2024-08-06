@@ -8,6 +8,8 @@ from db.redis_client import set_cached_response, get_cached_response
 from utils.agregacion import *
 from datetime import datetime
 
+from utils.gap_generator import generar_huecos
+
 router = APIRouter(
     prefix="/datos/sensorvacio",
     tags=["sensorvacio"],
@@ -15,7 +17,6 @@ router = APIRouter(
 )
 
 
-# Hacer que entregue delta de t
 def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_date=None):
     cache_key = f"datos_sensor_{variable}_{equipo}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
@@ -41,33 +42,17 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
     if end_date:
         query = query.where(SensorDatos.timestamp <= end_date)
 
+    # Obtener la fecha y hora actuales
+    current_datetime = datetime.now()
+    query = query.where(SensorDatos.timestamp <= current_datetime)
+
+    # Ejecutar la consulta y obtener los resultados
     resultados = db.execute(query).fetchall()
     datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
 
     nombre_equipo = datos[0]['equipo']
 
-    import random
-
-    huecos_totales = random.randint(1, 4)  # Número de huecos
-    huecos_posiciones = set()
-    huecos_info = []
-    sigma = (len(datos) / 100) * 0.25
-
-    # Generar huecos
-    for _ in range(huecos_totales):
-        long_hueco = int(
-            min(len(datos) / 100 + sigma, max(len(datos) / 100 - sigma, int(random.gauss(len(datos) / 100, sigma)))))
-        pos = random.randint(0, len(datos) - long_hueco)
-        # Comprobar que no caigan 2 huecos en la misma posición
-        if not any(pos + i in huecos_posiciones for i in range(long_hueco)):
-            huecos_posiciones.update(range(pos, pos + long_hueco))
-            huecos_info.append((pos, long_hueco, datos[pos]['time']))
-
-    # Imprimir huecos
-    for pos, length, time in huecos_info:
-        print(f"Hueco en la posición: {pos} de {length} de largo, empezando en {time}")
-
-    datos_with_gaps = [dato for i, dato in enumerate(datos) if i not in huecos_posiciones]
+    datos_with_gaps, huecos_info = generar_huecos(datos)
 
     set_cached_response(cache_key, datos_with_gaps)
 
@@ -96,7 +81,7 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
                 datos_with_gaps.insert(i, {"time": datos[i]['time'], "value": None, "equipo": datos[i]['equipo']})
         return datos_with_gaps
 
-    datos_agregados = get_datos_sin_hueco(s_data, s_time, z)
+    datos_agregados = get_datos_sin_hueco([datos_with_gaps[0]['time'], datos_with_gaps[-1]['time']], s_data, s_time, z)
 
     datos = []
     for item in datos_agregados:
@@ -107,6 +92,7 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
         })
 
     return datos
+
 
 @router.get("/")
 def datos_condicionales_sensor(
