@@ -23,11 +23,13 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
     if cached_data:
         return cached_data
 
+    # Main query to get the data to be returned
     query = (
         select(
             SensorDatos.timestamp.label('time'),
             SensorDatos.valor.label('value'),
-            Equipo.descripcion.label('equipo')
+            Equipo.descripcion.label('equipo'),
+            Sensor.deltat.label('deltat')
         )
         .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
         .join(Variable, Sensor.id_variable == Variable.id)
@@ -51,24 +53,11 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
     datos = [{"time": r.time, "value": r.value, "equipo": r.equipo} for r in resultados]
 
     nombre_equipo = datos[0]['equipo']
+    deltat = resultados[0].deltat
 
     datos_with_gaps, huecos_info = generar_huecos(datos)
 
     set_cached_response(cache_key, datos_with_gaps)
-
-    #################### AGREGACIÓN ####################
-    # Query para conseguir delta_t
-    query_delta = (
-        select(
-            Sensor.deltat.label('deltat')
-        )
-        .join(Variable, Sensor.id_variable == Variable.id)
-        .join(Equipo, Sensor.id_equipo == Equipo.id)
-        .where(Variable.simbolo == variable)
-        .where(Equipo.nombre == equipo)
-    )
-
-    deltat = db.execute(query_delta).one()[0]
 
     s_data = [dato['value'] for dato in datos_with_gaps]
     s_time = [int(dato['time'].timestamp() * 1000) for dato in datos_with_gaps]
