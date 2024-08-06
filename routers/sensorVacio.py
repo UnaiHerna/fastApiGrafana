@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, APIRouter, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from db.connector import get_db
 from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
@@ -107,7 +107,6 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
         })
 
     return datos
-
 
 @router.get("/")
 def datos_condicionales_sensor(
