@@ -1,5 +1,6 @@
 from locust import HttpUser, task, between
 
+
 class APIUser(HttpUser):
     wait_time = between(1, 5)  # Tiempo de espera entre peticiones, en segundos
 
@@ -36,7 +37,7 @@ class APIUser(HttpUser):
         self.client.get("/datos/grafico2/")
 
     def prueba(self):
-        self.client.get("/datos/sensorvacio/?variable=temp&equipo=INF_PIPE.CNTL&start_date=2023-01-01&end_date=2023"
+        self.client.get("/datos/sensorvacio/?variable=temp&equipo=INF_PIPE.CNTL&start_date=2024-01-01&end_date=2024"
                         "-04-02")
-        self.client.get("/datos/sensorvacio/?variable=temp&equipo=INF_PIPE.CNTL&start_date=2023-01-01&end_date=2024"
-                        "-01-01")
+        self.client.get("/datos/sensorvacio/?variable=temp&equipo=INF_PIPE.CNTL&start_date=2024-01-01&end_date=2024"
+                        "-12-31")

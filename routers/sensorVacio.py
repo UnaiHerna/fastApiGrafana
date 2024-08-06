@@ -23,7 +23,6 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
     if cached_data:
         return cached_data
 
-    # Main query to get the data to be returned
     query = (
         select(
             SensorDatos.timestamp.label('time'),
@@ -39,13 +38,22 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    if start_date:
-        query = query.where(SensorDatos.timestamp >= start_date)
-    if end_date:
-        query = query.where(SensorDatos.timestamp <= end_date)
-
     # Obtener la fecha y hora actuales
     current_datetime = datetime.now()
+
+    # Gestión de errores en fechas
+    if start_date and start_date >= datetime(2024, 1, 1):
+        query = query.where(SensorDatos.timestamp >= start_date)
+    else:
+        raise HTTPException(status_code=400, detail="La fecha de inicio debe ser posterior a 2023")
+
+    if end_date and end_date > start_date:
+        query = query.where(SensorDatos.timestamp <= end_date)
+    else:
+        raise HTTPException(status_code=400, detail="La fecha de inicio debe ser menor a la fecha de fin.")
+
+
+    # Validar que end_date no sea posterior a la fecha actual
     query = query.where(SensorDatos.timestamp <= current_datetime)
 
     # Ejecutar la consulta y obtener los resultados
@@ -75,7 +83,7 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
     datos = []
     for item in datos_agregados:
         datos.append({
-            "time": item[0].isoformat(), #Pasarlo a string/datetime
+            "time": item[0].isoformat(),  # Convertir a string ISO 8601
             "value": item[1],
             "equipo": nombre_equipo
         })
