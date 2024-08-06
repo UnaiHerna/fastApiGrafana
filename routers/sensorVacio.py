@@ -7,7 +7,7 @@ from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
 from utils.agregacion import *
 from datetime import datetime
-
+from utils.date_checker import date_validator
 from utils.gap_generator import generar_huecos
 
 router = APIRouter(
@@ -38,23 +38,8 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
         .order_by(SensorDatos.timestamp.asc())
     )
 
-    # Obtener la fecha y hora actuales
-    current_datetime = datetime.now()
-
-    # Gestión de errores en fechas
-    if start_date and start_date >= datetime(2024, 1, 1):
-        query = query.where(SensorDatos.timestamp >= start_date)
-    else:
-        raise HTTPException(status_code=400, detail="La fecha de inicio debe ser posterior a 2023")
-
-    if end_date and end_date > start_date:
-        query = query.where(SensorDatos.timestamp <= end_date)
-    else:
-        raise HTTPException(status_code=400, detail="La fecha de inicio debe ser menor a la fecha de fin.")
-
-
-    # Validar que end_date no sea posterior a la fecha actual
-    query = query.where(SensorDatos.timestamp <= current_datetime)
+    # Gestión de fechas de la consulta
+    query = date_validator(query, end_date, start_date)
 
     # Ejecutar la consulta y obtener los resultados
     resultados = db.execute(query).fetchall()

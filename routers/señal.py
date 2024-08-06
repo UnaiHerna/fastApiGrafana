@@ -6,7 +6,6 @@ from sqlalchemy import select
 from db.connector import get_db
 from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
-from utils.date_checker import date_checker
 
 router = APIRouter(
     prefix="/datos/senal",
