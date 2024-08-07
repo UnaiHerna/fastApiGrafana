@@ -13,8 +13,8 @@ def get_diccionario1(tipo):
         return [diccionario1, max_points]
     elif tipo == "barchart":
         diccionario1 = {
-            "h": [1, 2, 3, 5, 12, 24, 48],
-            "d": [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+            "h": [3, 6, 12],
+            "d": [1, 2, 3, 4, 5, 6, 7, 14, 31, 92]
         }
         max_points = 10
         return [diccionario1, max_points]
