@@ -116,8 +116,8 @@ def datos_condicionales_consigna(
 
 
 @router.get("/porcentaje")
-def porcentaje_mode(db: Session = Depends(get_db), consigna=None, start_date=None, end_date=None):
-    cache_key = f"porcentaje_{consigna}_{start_date}_{end_date}"
+def porcentaje_mode(db: Session = Depends(get_db), nombre=None, start_date=None, end_date=None):
+    cache_key = f"porcentaje_{nombre}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -128,7 +128,7 @@ def porcentaje_mode(db: Session = Depends(get_db), consigna=None, start_date=Non
             ValoresConsigna.mode
         )
         .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
-        .where(Consigna.nombre == consigna)
+        .where(Consigna.nombre == nombre)
         .group_by(ValoresConsigna.mode)
     )
 
@@ -147,7 +147,7 @@ def porcentaje_mode(db: Session = Depends(get_db), consigna=None, start_date=Non
     percentage_mode_0 = (count_mode_0 / total_count) * 100 if total_count > 0 else 0
 
     datos = {
-        "consigna": consigna,
+        "consigna": nombre,
         "Automatico": f"{percentage_mode_1:.2f}%",
         "Manual": f"{percentage_mode_0:.2f}%"
     }
