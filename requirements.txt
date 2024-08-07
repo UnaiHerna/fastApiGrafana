@@ -8,3 +8,5 @@ redis~=5.0.7
 pandas~=2.2.2
 starlette~=0.37.2
 jose~=1.0.0
+pytz~=2024.1
+locust~=2.30.0

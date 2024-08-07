@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, APIRouter, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select
 from db.connector import get_db
 from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
@@ -17,8 +17,8 @@ router = APIRouter(
 )
 
 
-def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_date=None):
-    cache_key = f"datos_sensor_{variable}_{equipo}_{start_date}_{end_date}"
+def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_date=None, tipo=None):
+    cache_key = f"datos_sensor_{variable}_{equipo}_{start_date}_{end_date}_{tipo}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
@@ -52,28 +52,27 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
 
     set_cached_response(cache_key, datos_with_gaps)
 
+    return agregacion(datos, datos_with_gaps, deltat, huecos_info, nombre_equipo, tipo)
+
+
+def agregacion(datos, datos_with_gaps, deltat, huecos_info, nombre_equipo, tipo):
     s_data = [dato['value'] for dato in datos_with_gaps]
     s_time = [int(dato['time'].timestamp() * 1000) for dato in datos_with_gaps]
-
-    z = calcular_delta_prima(deltat, [datos_with_gaps[0]['time'], datos_with_gaps[-1]['time']])
-
+    z = calcular_delta_prima(tipo, deltat, [datos_with_gaps[0]['time'], datos_with_gaps[-1]['time']])
     if z == deltat:
         for pos, length, time in huecos_info:
             for i in range(pos, pos + length):
                 datos_with_gaps.insert(i, {"time": datos[i]['time'], "value": None, "equipo": datos[i]['equipo']})
         return datos_with_gaps
-
     datos_agregados = get_datos_sin_hueco([datos_with_gaps[0]['time'], datos_with_gaps[-1]['time']], s_data, s_time, z)
-
-    datos = []
+    datos_finales = []
     for item in datos_agregados:
-        datos.append({
+        datos_finales.append({
             "time": item[0].isoformat(),  # Convertir a string ISO 8601
             "value": item[1],
             "equipo": nombre_equipo
         })
-
-    return datos
+    return datos_finales
 
 
 @router.get("/")
@@ -82,10 +81,14 @@ def datos_condicionales_sensor(
         equipo: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        tipo: Optional[str] = None,
         db: Session = Depends(get_db)
 ):
     if variable and equipo:
-        return read_datos_sensor_by_variable(db, variable, equipo, start_date, end_date)
+        try:
+            return read_datos_sensor_by_variable(db, variable, equipo, start_date, end_date, tipo)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
     elif variable and not equipo:
         raise HTTPException(status_code=400, detail="Falta el nombre del equipo.")
     else:
