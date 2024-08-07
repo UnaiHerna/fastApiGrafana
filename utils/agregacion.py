@@ -7,9 +7,9 @@ def get_diccionario1(tipo):
             "s": [1, 2, 3, 5, 10, 30],
             "m": [1, 2, 3, 5, 10, 30],
             "h": [1, 2, 3, 5, 12, 24, 48],
-            "d": [1, 2]
+            "d": [1, 2, 3]
         }
-        max_points = 549
+        max_points = 400
         return [diccionario1, max_points]
     elif tipo == "barchart":
         diccionario1 = {
