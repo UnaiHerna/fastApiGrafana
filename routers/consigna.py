@@ -1,7 +1,7 @@
 from typing import Optional
 from fastapi import Depends, HTTPException, APIRouter, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, func
 from db.connector import get_db
 from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
@@ -103,7 +103,6 @@ def datos_condicionales_consigna(
         end_date: Optional[datetime] = None,
         db: Session = Depends(get_db)
 ):
-
     if nombre and not equipo and not nombres and not equipos:
         return read_datos_consigna_by_nombre(db, nombre, start_date, end_date)
     elif equipo and not nombre and not nombres and not equipos:
@@ -114,3 +113,44 @@ def datos_condicionales_consigna(
         return read_consigna_multiple_by_equipo(db, equipos, start_date, end_date)
     else:
         raise HTTPException(status_code=400, detail="Debe proporcionar los datos de forma correcta.")
+
+
+@router.get("/porcentaje")
+def porcentaje_mode(db: Session = Depends(get_db), consigna=None, start_date=None, end_date=None):
+    cache_key = f"porcentaje_{consigna}_{start_date}_{end_date}"
+    cached_data = get_cached_response(cache_key)
+    if cached_data:
+        return cached_data
+
+    base_query = (
+        select(
+            func.count(ValoresConsigna.id_consigna).label('count'),
+            ValoresConsigna.mode
+        )
+        .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
+        .where(Consigna.nombre == consigna)
+        .group_by(ValoresConsigna.mode)
+    )
+
+    if start_date:
+        base_query = base_query.where(ValoresConsigna.timestamp >= start_date)
+    if end_date:
+        base_query = base_query.where(ValoresConsigna.timestamp <= end_date)
+
+    resultados = db.execute(base_query).fetchall()
+
+    total_count = sum(r.count for r in resultados)
+    count_mode_1 = sum(r.count for r in resultados if r.mode == 1)
+    count_mode_0 = sum(r.count for r in resultados if r.mode == 0)
+
+    percentage_mode_1 = (count_mode_1 / total_count) * 100 if total_count > 0 else 0
+    percentage_mode_0 = (count_mode_0 / total_count) * 100 if total_count > 0 else 0
+
+    datos = {
+        "consigna": consigna,
+        "Automatico": f"{percentage_mode_1:.2f}%",
+        "Manual": f"{percentage_mode_0:.2f}%"
+    }
+
+    set_cached_response(cache_key, datos)
+    return datos
