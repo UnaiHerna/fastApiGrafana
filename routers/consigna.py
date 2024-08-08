@@ -184,17 +184,15 @@ def get_avg_modo(db: Session = Depends(get_db), nombre=None, start_date=None, en
 
     if modo == '1':
         datos = {
-            "Automatico": {
-                "consigna": nombre,
-                "avg": avg
-            }
+            "mode": "AUTO",
+            "consigna": nombre,
+            "avg": avg
         }
     else:
         datos = {
-            "Manual": {
-                "consigna": nombre,
-                "avg": avg
-            }
+            "mode": "MANUAL",
+            "consigna": nombre,
+            "avg": avg
         }
 
     set_cached_response(cache_key, datos)
