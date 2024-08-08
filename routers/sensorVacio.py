@@ -52,7 +52,7 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
 
     datos_finales = agregacion(datos, datos_with_gaps, deltat, huecos_info, nombre_equipo, tipo)
 
-    set_cached_response(cache_key, datos_with_gaps)
+    set_cached_response(cache_key, datos_finales)
 
     return datos_finales
 
