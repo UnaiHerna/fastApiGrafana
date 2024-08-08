@@ -50,9 +50,11 @@ def read_datos_sensor_by_variable(db, variable, equipo, start_date=None, end_dat
 
     datos_with_gaps, huecos_info = generar_huecos(datos)
 
+    datos_finales = agregacion(datos, datos_with_gaps, deltat, huecos_info, nombre_equipo, tipo)
+
     set_cached_response(cache_key, datos_with_gaps)
 
-    return agregacion(datos, datos_with_gaps, deltat, huecos_info, nombre_equipo, tipo)
+    return datos_finales
 
 
 def agregacion(datos, datos_with_gaps, deltat, huecos_info, nombre_equipo, tipo):
@@ -89,6 +91,8 @@ def datos_condicionales_sensor(
             return read_datos_sensor_by_variable(db, variable, equipo, start_date, end_date, tipo)
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        except IndexError:
+            raise HTTPException(status_code=404, detail="No hay datos suficientes.")
     elif variable and not equipo:
         raise HTTPException(status_code=400, detail="Falta el nombre del equipo.")
     else:
