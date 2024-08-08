@@ -156,8 +156,9 @@ def porcentaje_mode(db: Session = Depends(get_db), nombre=None, start_date=None,
     set_cached_response(cache_key, datos)
     return datos
 
+
 @router.get("/avg_modo")
-def get_avg_modo (db: Session = Depends(get_db), nombre=None, start_date=None, end_date=None, modo=None):
+def get_avg_modo(db: Session = Depends(get_db), nombre=None, start_date=None, end_date=None, modo=None):
     cache_key = f"avg_modo_{nombre}_{start_date}_{end_date}_{modo}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
@@ -181,10 +182,20 @@ def get_avg_modo (db: Session = Depends(get_db), nombre=None, start_date=None, e
 
     avg = resultados[0].avg
 
-    datos = {
-        "consigna": nombre,
-        "avg": avg
-    }
+    if modo == 1:
+        datos = {
+            "Automatico": {
+                "consigna": nombre,
+                "avg": avg
+            }
+        }
+    else:
+        datos = {
+            "Manual": {
+                "consigna": nombre,
+                "avg": avg
+            }
+        }
 
     set_cached_response(cache_key, datos)
     return datos
