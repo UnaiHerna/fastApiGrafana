@@ -101,6 +101,7 @@ def datos_condicionales_consigna(
         equipos: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        mode: Optional[int] = None,
         db: Session = Depends(get_db)
 ):
     if nombre and not equipo and not nombres and not equipos:
@@ -150,6 +151,39 @@ def porcentaje_mode(db: Session = Depends(get_db), nombre=None, start_date=None,
         "consigna": nombre,
         "Automatico": f"{percentage_mode_1:.2f}%",
         "Manual": f"{percentage_mode_0:.2f}%"
+    }
+
+    set_cached_response(cache_key, datos)
+    return datos
+
+@router.get("/avg_modo")
+def get_avg_modo (db: Session = Depends(get_db), nombre=None, start_date=None, end_date=None, modo=None):
+    cache_key = f"avg_modo_{nombre}_{start_date}_{end_date}_{modo}"
+    cached_data = get_cached_response(cache_key)
+    if cached_data:
+        return cached_data
+
+    base_query = (
+        select(
+            func.avg(ValoresConsigna.valor).label('avg')
+        )
+        .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
+        .where(Consigna.nombre == nombre)
+        .where(ValoresConsigna.mode == modo)
+    )
+
+    if start_date:
+        base_query = base_query.where(ValoresConsigna.timestamp >= start_date)
+    if end_date:
+        base_query = base_query.where(ValoresConsigna.timestamp <= end_date)
+
+    resultados = db.execute(base_query).fetchall()
+
+    avg = resultados[0].avg
+
+    datos = {
+        "consigna": nombre,
+        "avg": avg
     }
 
     set_cached_response(cache_key, datos)
