@@ -182,7 +182,7 @@ def get_avg_modo(db: Session = Depends(get_db), nombre=None, start_date=None, en
 
     avg = resultados[0].avg
 
-    if modo == 1:
+    if modo == '1':
         datos = {
             "Automatico": {
                 "consigna": nombre,
