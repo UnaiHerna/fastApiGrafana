@@ -158,19 +158,21 @@ def porcentaje_mode(db: Session = Depends(get_db), nombre=None, start_date=None,
 
 
 @router.get("/avg_modo")
-def get_avg_modo(db: Session = Depends(get_db), nombre=None, start_date=None, end_date=None, modo=None):
-    cache_key = f"avg_modo_{nombre}_{start_date}_{end_date}_{modo}"
+def get_avg_modo(db: Session = Depends(get_db), nombre: str = None, start_date: str = None, end_date: str = None):
+    cache_key = f"avg_modo_{nombre}_{start_date}_{end_date}"
     cached_data = get_cached_response(cache_key)
     if cached_data:
         return cached_data
 
     base_query = (
         select(
-            func.avg(ValoresConsigna.valor).label('avg')
+            func.avg(ValoresConsigna.valor).label('avg'),
+            Consigna.nombre.label('consigna'),
+            ValoresConsigna.mode.label('mode')
         )
         .join(Consigna, ValoresConsigna.id_consigna == Consigna.id)
         .where(Consigna.nombre == nombre)
-        .where(ValoresConsigna.mode == modo)
+        .group_by(Consigna.nombre, ValoresConsigna.mode)
     )
 
     if start_date:
@@ -180,20 +182,14 @@ def get_avg_modo(db: Session = Depends(get_db), nombre=None, start_date=None, en
 
     resultados = db.execute(base_query).fetchall()
 
-    avg = resultados[0].avg
-
-    if modo == '1':
-        datos = {
-            "mode": "AUTO",
-            "consigna": nombre,
-            "avg": avg
-        }
-    else:
-        datos = {
-            "mode": "MANUAL",
-            "consigna": nombre,
-            "avg": avg
-        }
+    datos = []
+    for r in resultados:
+        mode_str = "AUTO" if r.mode == 1 else "MANUAL"
+        datos.append({
+            "avg": r.avg,
+            "consigna": r.consigna,
+            "mode": mode_str
+        })
 
     set_cached_response(cache_key, datos)
     return datos
