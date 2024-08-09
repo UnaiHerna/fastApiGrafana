@@ -69,7 +69,7 @@ def read_datos_consigna_by_equipo(db, equipo, start_date=None, end_date=None):
         query = query.where(ValoresConsigna.timestamp <= end_date)
 
     resultados = db.execute(query).fetchall()
-    datos = [{"time": r.time, "value": r.value, "mode": r.mode, "consigna": r.consigna} for r in resultados]
+    datos = [{"time": r.time, "value": r.value, "mode": r.mode, "consigna":  r.consigna} for r in resultados]
 
     set_cached_response(cache_key, datos)
     return datos
@@ -182,12 +182,22 @@ def get_avg_modo(db: Session = Depends(get_db), nombre: str = None, start_date: 
 
     resultados = db.execute(base_query).fetchall()
 
+    # Crear un diccionario para verificar modos presentes
+    modos_presentes = {r.mode: r for r in resultados}
+
+    # Prepara la respuesta asegurando que ambos modos estén presentes
     datos = []
-    for r in resultados:
-        mode_str = "AUTO" if r.mode == 1 else "MANUAL"
+    for mode in [0, 1]:  # 0 para MANUAL, 1 para AUTO
+        if mode in modos_presentes:
+            r = modos_presentes[mode]
+            avg_value = r.avg
+        else:
+            avg_value = None
+
+        mode_str = "AUTO" if mode == 1 else "MANUAL"
         datos.append({
-            "avg": r.avg,
-            "consigna": r.consigna,
+            "avg": avg_value,
+            "consigna": nombre,
             "mode": mode_str
         })
 
