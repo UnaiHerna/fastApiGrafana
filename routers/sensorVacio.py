@@ -108,10 +108,13 @@ def datos_heatmap_sensor(db: Session = Depends(get_db), variable: Optional[str] 
     if cached_data:
         return cached_data
 
+    if year is None:
+        year = datetime.now().year
+
     query = (
         select(
             func.week(SensorDatos.timestamp, 1).label('week'),  # Número de semana del año
-            func.date(SensorDatos.timestamp).label('date'),
+            func.dayname(SensorDatos.timestamp).label('day'),  # Nombre del día de la semana
             func.avg(SensorDatos.valor).label('average_value')
         )
         .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
@@ -120,20 +123,28 @@ def datos_heatmap_sensor(db: Session = Depends(get_db), variable: Optional[str] 
         .where(Variable.simbolo == variable)
         .where(Equipo.nombre == equipo)
         .where(extract('year', SensorDatos.timestamp) == year)
-        .group_by(func.week(SensorDatos.timestamp, 1), func.date(SensorDatos.timestamp))
-        .order_by(func.week(SensorDatos.timestamp, 1), func.date(SensorDatos.timestamp))
+        .group_by(func.week(SensorDatos.timestamp, 1), func.dayname(SensorDatos.timestamp))
+        .order_by(func.week(SensorDatos.timestamp, 1), func.dayofweek(SensorDatos.timestamp))
     )
 
     resultados = db.execute(query).fetchall()
 
-    weekly_data = defaultdict(list)
+    # Procesar resultados en formato deseado
+    weekly_data = {}
+    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
     for r in resultados:
         week = r.week
-        date_str = r.date.strftime('%Y-%m-%d')
+        day = r.day
         avg_value = r.average_value
-        weekly_data[week].append({"date": date_str, "avg": avg_value})
 
-    formatted_result = [{"week": week, "data": data} for week, data in sorted(weekly_data.items())]
+        if week not in weekly_data:
+            # Inicializar el diccionario para cada semana con todos los días
+            weekly_data[week] = {day: None for day in days_of_week}
+
+        weekly_data[week][day] = avg_value
+
+    # Convertir a la lista de diccionarios
+    formatted_result = [{"Week": week, **data} for week, data in sorted(weekly_data.items())]
 
     return formatted_result
