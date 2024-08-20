@@ -136,19 +136,24 @@ def datos_heatmap_sensor(db: Session = Depends(get_db), variable: Optional[str] 
 
     resultados = db.execute(query).fetchall()
 
-    weekly_data = {}
-    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    days_data = {}
+    weeks_of_year = [f"week{i}" for i in range(1, 54)]  # Suponiendo que podrías tener hasta 53 semanas en un año.
 
+    # Inicializamos el diccionario para cada día de la semana
+    days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    for day in days_of_week:
+        days_data[day] = {week: None for week in weeks_of_year}
+
+    # Iteramos sobre los resultados y llenamos los datos
     for r in resultados:
-        week = r.week
+        week = f"week{r.week}"  # Ejemplo: "week1", "week2", etc.
         day = r.day
         avg_value = r.average_value
 
-        if week not in weekly_data:
-            weekly_data[week] = {day: None for day in days_of_week}
+        if day in days_data:
+            days_data[day][week] = avg_value
 
-        weekly_data[week][day] = avg_value
-
-    formatted_result = [{"Week": week, **data} for week, data in sorted(weekly_data.items())]
+    # Formateamos el resultado final como lista de diccionarios
+    formatted_result = [{"Day": day, **data} for day, data in days_data.items()]
 
     return formatted_result
