@@ -1,7 +1,8 @@
+from collections import defaultdict
 from typing import Optional
 from fastapi import Depends, HTTPException, APIRouter, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, extract, func
 from db.connector import get_db
 from db.models import *
 from db.redis_client import set_cached_response, get_cached_response
@@ -97,3 +98,42 @@ def datos_condicionales_sensor(
         raise HTTPException(status_code=400, detail="Falta el nombre del equipo.")
     else:
         raise HTTPException(status_code=404, detail="No existe esa combinación.")
+
+
+@router.get("/heatmap")
+def datos_heatmap_sensor(db: Session = Depends(get_db), variable: Optional[str] = None, equipo: Optional[str] = None,
+                         year: Optional[int] = None):
+    cache_key = f"heatmap_sensor_{variable}_{equipo}"
+    cached_data = get_cached_response(cache_key)
+    if cached_data:
+        return cached_data
+
+    query = (
+        select(
+            func.week(SensorDatos.timestamp, 1).label('week'),  # Número de semana del año
+            func.date(SensorDatos.timestamp).label('date'),
+            func.avg(SensorDatos.valor).label('average_value')
+        )
+        .join(Sensor, (SensorDatos.id_equipo == Sensor.id_equipo) & (SensorDatos.id_variable == Sensor.id_variable))
+        .join(Variable, Sensor.id_variable == Variable.id)
+        .join(Equipo, Sensor.id_equipo == Equipo.id)
+        .where(Variable.simbolo == variable)
+        .where(Equipo.nombre == equipo)
+        .where(extract('year', SensorDatos.timestamp) == year)
+        .group_by(func.week(SensorDatos.timestamp, 1), func.date(SensorDatos.timestamp))
+        .order_by(func.week(SensorDatos.timestamp, 1), func.date(SensorDatos.timestamp))
+    )
+
+    resultados = db.execute(query).fetchall()
+
+    weekly_data = defaultdict(list)
+
+    for r in resultados:
+        week = r.week
+        date_str = r.date.strftime('%Y-%m-%d')
+        avg_value = r.average_value
+        weekly_data[week].append({"date": date_str, "avg": avg_value})
+
+    formatted_result = [{"week": week, "data": data} for week, data in sorted(weekly_data.items())]
+
+    return formatted_result

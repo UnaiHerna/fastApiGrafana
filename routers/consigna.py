@@ -101,7 +101,6 @@ def datos_condicionales_consigna(
         equipos: Optional[str] = None,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-        mode: Optional[int] = None,
         db: Session = Depends(get_db)
 ):
     if nombre and not equipo and not nombres and not equipos:
