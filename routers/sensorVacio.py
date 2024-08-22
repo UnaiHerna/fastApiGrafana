@@ -139,7 +139,6 @@ def datos_heatmap_sensor(db: Session = Depends(get_db), variable: Optional[str] 
     days_data = {}
     weeks_of_year = [f"week{i}" for i in range(1, 54)]  # Suponiendo que podrías tener hasta 53 semanas en un año.
 
-    # Inicializamos el diccionario para cada día de la semana
     days_of_week = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     for day in days_of_week:
         days_data[day] = {week: None for week in weeks_of_year}
