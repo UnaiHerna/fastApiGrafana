@@ -1,3 +1,4 @@
+'''
 from fastapi import Depends, status
 from fastapi.security import OAuth2PasswordBearer
 from typing import Optional
@@ -97,3 +98,4 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
     return token_data
+'''
