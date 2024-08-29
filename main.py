@@ -1,12 +1,24 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import select, func, literal, extract, or_, and_
 from sqlalchemy.orm import Session
+from starlette.middleware.cors import CORSMiddleware
+
 from db.models import Variable, Equipo, Sensor, SensorDatos, SenalDatos, Senal, ValoresConsigna, Consigna
 from db.connector import get_db
 from routers import consigna, sensor, señal, sensorVacio
 from utils.security import RateLimitMiddleware
 
 app = FastAPI()
+
+# Configuración de CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # Cambia según sea necesario
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 app.add_middleware(RateLimitMiddleware, max_requests_per_minute=100, max_requests_total=100, path_limit=100)
 
