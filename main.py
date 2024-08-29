@@ -7,7 +7,7 @@ from routers import consigna, sensor, señal, sensorVacio
 
 app = FastAPI()
 
-# app.add_middleware(RateLimitMiddleware, max_requests_per_minute=100, max_requests_total=100, path_limit=100)
+app.add_middleware(RateLimitMiddleware, max_requests_per_minute=100, max_requests_total=100, path_limit=100)
 
 app.include_router(consigna.router)
 app.include_router(sensor.router)
