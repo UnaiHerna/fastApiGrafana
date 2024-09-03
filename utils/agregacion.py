@@ -71,7 +71,8 @@ def calcular_delta_prima(tipo, delta_dts, time_limits):
     }
     num_time = b / values["valor"]
 
-    agrupacion_rango_valor = 0
+    # Obtener el último valor del rango si num_time no se encuentra en el rango
+    agrupacion_rango_valor = values["rango"][-1]
 
     for rango in values["rango"]:
         if num_time < rango:
