@@ -1,8 +1,6 @@
 from fastapi import HTTPException
 from datetime import datetime
 from db.models import SensorDatos
-
-
 def date_validator(query, end_date, start_date):
     # Obtener la fecha y hora actuales
     current_datetime = datetime.now()

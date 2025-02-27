@@ -2,10 +2,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy import select, func, literal, extract, or_, and_
 from sqlalchemy.orm import Session
 from starlette.middleware.cors import CORSMiddleware
-
 from db.models import Variable, Equipo, Sensor, SensorDatos, SenalDatos, Senal, ValoresConsigna, Consigna
 from db.connector import get_db
-from routers import consigna, sensor, señal, sensorVacio
+from routers import consigna, sensor, señal, sensorVacio, forecast
 from utils.security import RateLimitMiddleware
 
 app = FastAPI()
@@ -26,25 +25,7 @@ app.include_router(consigna.router)
 app.include_router(sensor.router)
 app.include_router(señal.router)
 app.include_router(sensorVacio.router)
-
-'''
-# CORS configuration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["https://your-allowed-origin.com"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# OAuth2 configuration
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-# Include routers with dependencies
-app.include_router(consigna.router, dependencies=[Depends(get_current_user)])
-app.include_router(sensor.router, dependencies=[Depends(get_current_user)])
-app.include_router(señal.router, dependencies=[Depends(get_current_user)])
-'''
+app.include_router(forecast.router)
 
 @app.get("/")
 def read_root():
